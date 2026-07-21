@@ -117,7 +117,7 @@ class _PaymentCollectionScreenState extends ConsumerState<PaymentCollectionScree
     // 1. Upload receipt (if any) + build fraud-prevention metadata
     if (_receiptBytes != null) {
       final upload = await controller.uploadReceipt(
-        vendorId: widget.args.vendorId,
+        orderId: widget.args.orderId,
         bytes: _receiptBytes!,
       );
       final failure = upload.failureOrNull;

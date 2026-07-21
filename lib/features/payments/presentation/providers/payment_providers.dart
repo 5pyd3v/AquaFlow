@@ -87,10 +87,10 @@ class PaymentController extends AutoDisposeAsyncNotifier<void> {
   }
 
   Future<Result<String>> uploadReceipt({
-    required String vendorId,
+    required String orderId,
     required Uint8List bytes,
   }) async {
-    return _repo.uploadReceipt(vendorId: vendorId, bytes: bytes);
+    return _repo.uploadReceipt(orderId: orderId, bytes: bytes);
   }
 
   Future<Result<RecordPaymentResult>> completeWithPayment({

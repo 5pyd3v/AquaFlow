@@ -47,8 +47,9 @@ abstract class PaymentRepository {
   });
 
   /// Uploads a receipt image to storage and returns its public URL.
+  /// Filed under the order id to satisfy the `delivery-proofs` bucket RLS.
   Future<Result<String>> uploadReceipt({
-    required String vendorId,
+    required String orderId,
     required Uint8List bytes,
   });
 

@@ -44,11 +44,15 @@ class PaymentRepositoryImpl implements PaymentRepository {
 
   @override
   Future<Result<String>> uploadReceipt({
-    required String vendorId,
+    required String orderId,
     required Uint8List bytes,
   }) async {
     try {
-      final path = '$vendorId/${const Uuid().v4()}.jpg';
+      // The `delivery-proofs` bucket's RLS insert policy requires the
+      // first path segment to be an order id owned by the calling rider
+      // (see 0004_storage_buckets.sql: delivery_proofs_rider_write), so
+      // the receipt must be filed under the order id, not the vendor id.
+      final path = '$orderId/${const Uuid().v4()}.jpg';
       await _client.storage.from(SupabaseConfig.bucketProofs).uploadBinary(
             path,
             bytes,
