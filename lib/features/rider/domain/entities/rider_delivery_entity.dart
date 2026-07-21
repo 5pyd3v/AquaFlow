@@ -10,6 +10,7 @@ import '../../../orders/domain/entities/order_entity.dart';
 class RiderDeliveryEntity extends Equatable {
   final String id;
   final String orderNumber;
+  final String vendorId;
   final String vendorName;
   final String? vendorAddress;
   final double? vendorLat;
@@ -29,6 +30,7 @@ class RiderDeliveryEntity extends Equatable {
   const RiderDeliveryEntity({
     required this.id,
     required this.orderNumber,
+    required this.vendorId,
     required this.vendorName,
     this.vendorAddress,
     this.vendorLat,
@@ -52,6 +54,7 @@ class RiderDeliveryEntity extends Equatable {
   List<Object?> get props => [
         id,
         orderNumber,
+        vendorId,
         vendorName,
         vendorAddress,
         vendorLat,

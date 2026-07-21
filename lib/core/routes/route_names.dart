@@ -58,11 +58,19 @@ class RouteNames {
   static const riderHistory = 'rider-history';
   static const riderAccount = 'rider-account';
   static const riderWallet = 'rider-wallet';
+  static const riderSettlementHistory = 'rider-settlement-history';
+  static const paymentCollection = 'payment-collection';
+  static const receiptViewer = 'receipt-viewer';
 
   // Settlement routes
   static const vendorReceiveCod = 'vendor-receive-cod';
   static const vendorSettlements = 'vendor-settlements';
   static const vendorRiderFinances = 'vendor-rider-finances';
+
+  // Vendor finance routes
+  static const vendorFinanceDashboard = 'vendor-finance-dashboard';
+  static const vendorCustomerFinances = 'vendor-customer-finances';
+  static const vendorPaymentApprovals = 'vendor-payment-approvals';
 }
 
 class RoutePaths {
@@ -112,13 +120,22 @@ class RoutePaths {
   static const riderHistory = '/rider/history';
   static const riderAccount = '/rider/account';
   static const riderWallet = '/rider/wallet';
+  static const riderSettlementHistory = '/rider/wallet/history';
+  static const paymentCollection = '/rider/deliveries/payment';
+  static const receiptViewer = '/rider/receipt';
 
   // Settlements
   static const vendorReceiveCod = '/vendor/receive-cod';
   static const vendorSettlements = '/vendor/settlements';
   static const vendorRiderFinances = '/vendor/rider-finances';
 
+  // Vendor finance
+  static const vendorFinanceDashboard = '/vendor/finances';
+  static const vendorCustomerFinances = '/vendor/finances/customer/:customerId';
+  static const vendorPaymentApprovals = '/vendor/finances/approvals';
+
   static String productDetailOf(String productId) => '/customer/product/$productId';
   static String orderTrackingOf(String orderId) => '/customer/orders/$orderId';
   static String vendorEditProductOf(String productId) => '/vendor/products/edit/$productId';
+  static String vendorCustomerFinancesOf(String customerId) => '/vendor/finances/customer/$customerId';
 }

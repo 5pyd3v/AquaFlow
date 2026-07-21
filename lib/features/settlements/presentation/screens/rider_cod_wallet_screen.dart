@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shadows.dart';
 import '../../../../shared/extensions/num_extensions.dart';
@@ -48,7 +50,17 @@ class RiderCodWalletScreen extends ConsumerWidget {
                 },
               ),
               const SizedBox(height: 24),
-              const _SectionLabel(label: 'Settlement History'),
+              Row(
+                children: [
+                  const Expanded(child: _SectionLabel(label: 'Settlement History')),
+                  TextButton.icon(
+                    onPressed: () =>
+                        context.pushNamed(RouteNames.riderSettlementHistory),
+                    icon: const Text('View all'),
+                    label: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               settlementsAsync.when(
                 loading: () => const Center(

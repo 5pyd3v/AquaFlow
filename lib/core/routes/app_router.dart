@@ -26,7 +26,11 @@ import '../../features/rider/presentation/screens/rider_account_screen.dart';
 import '../../features/rider/presentation/screens/rider_active_deliveries_screen.dart';
 import '../../features/rider/presentation/screens/rider_history_screen.dart';
 import '../../features/rider/presentation/screens/rider_shell_screen.dart';
+import '../../features/payments/presentation/screens/vendor_customer_finances_screen.dart';
+import '../../features/payments/presentation/screens/vendor_finance_dashboard_screen.dart';
+import '../../features/payments/presentation/screens/vendor_payment_approvals_screen.dart';
 import '../../features/settlements/presentation/screens/rider_cod_wallet_screen.dart';
+import '../../features/settlements/presentation/screens/rider_settlement_history_screen.dart';
 import '../../features/settlements/presentation/screens/vendor_receive_cod_screen.dart';
 import '../../features/settlements/presentation/screens/vendor_rider_financials_screen.dart';
 import '../../features/settlements/presentation/screens/vendor_settlement_history_screen.dart';
@@ -314,6 +318,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.vendorRiderFinances,
             builder: (context, state) => const VendorRiderFinancialsScreen(),
           ),
+          GoRoute(
+            path: 'finances',
+            name: RouteNames.vendorFinanceDashboard,
+            builder: (context, state) => const VendorFinanceDashboardScreen(),
+            routes: [
+              GoRoute(
+                path: 'approvals',
+                name: RouteNames.vendorPaymentApprovals,
+                builder: (context, state) => const VendorPaymentApprovalsScreen(),
+              ),
+              GoRoute(
+                path: 'customer/:customerId',
+                name: RouteNames.vendorCustomerFinances,
+                builder: (context, state) => VendorCustomerFinancesScreen(
+                  customerProfileId: state.pathParameters['customerId']!,
+                  customerName: state.extra as String? ?? 'Customer',
+                ),
+              ),
+            ],
+          ),
         ],
       ),
 
@@ -341,6 +365,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: 'wallet',
             name: RouteNames.riderWallet,
             builder: (context, state) => const RiderCodWalletScreen(),
+            routes: [
+              GoRoute(
+                path: 'history',
+                name: RouteNames.riderSettlementHistory,
+                builder: (context, state) => const RiderSettlementHistoryScreen(),
+              ),
+            ],
           ),
         ],
       ),

@@ -9,6 +9,8 @@ import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/inputs/app_text_field.dart';
 import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
+import '../../../payments/presentation/providers/payment_providers.dart';
+import '../../../payments/presentation/screens/payment_collection_screen.dart';
 import '../../domain/entities/rider_delivery_entity.dart';
 import '../providers/rider_providers.dart';
 
@@ -305,9 +307,52 @@ class _ActionButton extends ConsumerWidget {
                   : () async {
                       if (!formKey.currentState!.validate()) return;
                       setState(() => isLoading = true);
+                      final otp = controller.text.trim();
+
+                      if (delivery.isCodPayment) {
+                        // Split flow: verify PIN only (no state change), then
+                        // open the payment screen. The order is marked
+                        // delivered ONLY after payment is committed there —
+                        // no "delivered but unpaid" gap is possible.
+                        final verify = await ref
+                            .read(paymentControllerProvider.notifier)
+                            .verifyPin(orderId: delivery.id, otp: otp);
+                        if (!dialogContext.mounted) return;
+                        setState(() => isLoading = false);
+                        await verify.fold(
+                          (failure) async => ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            SnackBar(content: Text(failure.message), backgroundColor: AppColors.error),
+                          ),
+                          (_) async {
+                            Navigator.of(dialogContext).pop();
+                            final completed = await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (_) => PaymentCollectionScreen(
+                                  args: PaymentCollectionArgs(
+                                    orderId: delivery.id,
+                                    orderNumber: delivery.orderNumber,
+                                    otp: otp,
+                                    vendorId: delivery.vendorId,
+                                    outstanding: delivery.totalAmount.round(),
+                                    isCod: true,
+                                  ),
+                                ),
+                              ),
+                            );
+                            if (completed == true) {
+                              ref.invalidate(activeDeliveriesProvider);
+                              ref.invalidate(deliveryHistoryProvider);
+                              ref.invalidate(riderStatsProvider);
+                            }
+                          },
+                        );
+                        return;
+                      }
+
+                      // Prepaid / non-COD: complete directly, no payment step.
                       final result = await ref
                           .read(activeDeliveriesProvider.notifier)
-                          .completeDelivery(delivery.id, controller.text.trim());
+                          .completeDelivery(delivery.id, otp);
                       if (!dialogContext.mounted) return;
                       setState(() => isLoading = false);
                       result.fold(

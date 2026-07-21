@@ -44,6 +44,11 @@ class SupabaseConfig {
   static const String walletTransactions = 'wallet_transactions';
   static const String favorites = 'favorites';
   static const String codSettlements = 'cod_settlements';
+  static const String paymentTransactions = 'payment_transactions';
+  static const String paymentReceipts = 'payment_receipts';
+  static const String paymentAuditLogs = 'payment_audit_logs';
+  static const String paymentAmendmentRequests = 'payment_amendment_requests';
+  static const String customerAccountStatements = 'customer_account_statements';
 
   // Storage buckets
   static const String bucketAvatars = 'avatars';

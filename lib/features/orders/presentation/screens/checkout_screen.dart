@@ -10,6 +10,7 @@ import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../addresses/domain/entities/address_entity.dart';
 import '../../../addresses/presentation/providers/address_providers.dart';
 import '../../../cart/presentation/providers/cart_provider.dart';
+import '../../../payments/presentation/providers/payment_providers.dart';
 import '../providers/order_providers.dart';
 
 enum _PaymentOption { cod, wallet, stripe, easypaisa, jazzcash }
@@ -235,8 +236,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       (failure) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(failure.message), backgroundColor: AppColors.error),
       ),
-      (order) {
+      (order) async {
         ref.read(cartProvider.notifier).clear();
+        // Auto-apply any available customer wallet credit to the fresh
+        // order. Non-breaking: if the customer has no credit the RPC
+        // applies 0 and the flow is identical to before. Failures here
+        // must never block navigation to tracking.
+        try {
+          await ref.read(paymentRepositoryProvider).applyCustomerCredit(orderId: order.id);
+        } catch (_) {}
+        if (!context.mounted) return;
         context.pushReplacementNamed(
           RouteNames.orderTracking,
           pathParameters: {'orderId': order.id},

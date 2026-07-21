@@ -157,8 +157,15 @@ class VendorDashboardScreen extends ConsumerWidget {
                   _QuickActionData(
                     icon: Icons.account_balance_rounded,
                     label: 'Finances',
-                    subtitle: 'Settlements & balances',
+                    subtitle: 'KPIs, ledgers & cash',
                     tint: const Color(0xFF2196F3),
+                    onTap: () => context.pushNamed(RouteNames.vendorFinanceDashboard),
+                  ),
+                  _QuickActionData(
+                    icon: Icons.receipt_long_rounded,
+                    label: 'Settlements',
+                    subtitle: 'COD settlement history',
+                    tint: const Color(0xFF00897B),
                     onTap: () => context.pushNamed(RouteNames.vendorSettlements),
                   ),
                   _QuickActionData(

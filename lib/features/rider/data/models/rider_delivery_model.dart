@@ -12,6 +12,7 @@ class RiderDeliveryModel extends RiderDeliveryEntity {
   const RiderDeliveryModel({
     required super.id,
     required super.orderNumber,
+    required super.vendorId,
     required super.vendorName,
     super.vendorAddress,
     super.vendorLat,
@@ -38,6 +39,7 @@ class RiderDeliveryModel extends RiderDeliveryEntity {
     return RiderDeliveryModel(
       id: json['id'] as String,
       orderNumber: json['order_number'] as String? ?? '',
+      vendorId: json['vendor_id'] as String? ?? '',
       vendorName: vendor?['business_name'] as String? ?? 'Vendor',
       vendorAddress: vendor?['address'] as String?,
       vendorLat: (vendor?['lat'] as num?)?.toDouble(),

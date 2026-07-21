@@ -164,7 +164,14 @@ class _CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => context.pushNamed(
+        RouteNames.vendorCustomerFinances,
+        pathParameters: {'customerId': customer.profileId},
+        extra: customer.fullName,
+      ),
+      child: Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -237,7 +244,7 @@ class _CustomerCard extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
-                  Text(
+                  const Text(
                     'orders',
                     style: TextStyle(
                       fontSize: 10,
@@ -298,7 +305,7 @@ class _CustomerCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Text(
+                const Text(
                   'PIN',
                   style: TextStyle(
                     fontSize: 10.5,
@@ -341,6 +348,7 @@ class _CustomerCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }
