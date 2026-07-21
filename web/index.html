@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="AquaFlow — water bottle delivery, reimagined. Order, track, and manage deliveries in one app.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="AquaFlow">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <meta name="theme-color" content="#0A6E8C">
+
+  <title>AquaFlow</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!--
+    Google Maps JavaScript API — required for the address picker and
+    (in a later build) live rider tracking on web. This is the
+    officially documented way `google_maps_flutter_web` expects the
+    key to be supplied: a static script tag, loaded before Flutter
+    boots, rather than anything read from `.env` at runtime (the
+    browser can't gate its own script-loading on a Dart async read).
+
+    Replace YOUR_GOOGLE_MAPS_WEB_API_KEY below with a Maps JavaScript
+    API key from Google Cloud Console. Until you do, the app runs
+    fine — only the map screens will show a blank/grey tile area.
+  -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_WEB_API_KEY" async></script>
+</head>
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

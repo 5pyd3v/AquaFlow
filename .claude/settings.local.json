@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter analyze *)",
+      "Bash(flutter pub *)",
+      "Bash(timeout 300 flutter build apk --debug)",
+      "Bash(cd \"/c/Users/spydev/Desktop/Water Management System/aquaflow\" && ls -la build/app/outputs/flutter-apk/ 2>/dev/null; echo \"---\"; tail -20 /tmp/build.log 2>/dev/null; echo \"no log\")",
+      "Bash(flutter build *)",
+      "Bash(cd D:/git/infra && flutter analyze lib/ 2>&1 | tail -40)",
+      "Bash(flutter clean *)"
+    ]
+  }
+}

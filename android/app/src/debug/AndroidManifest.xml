@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Cleartext traffic allowed only in debug builds, e.g. for local
+         Supabase/emulator testing against http://10.0.2.2 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

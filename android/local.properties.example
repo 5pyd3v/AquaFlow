@@ -1,0 +1,6 @@
+# Copy to `local.properties` (gitignored). flutter create normally
+# writes this automatically the first time you run `flutter run` —
+# it's included here as a template in case that step is skipped.
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+flutter.sdk=/Users/YOUR_USERNAME/development/flutter
+flutter.buildMode=debug
