@@ -172,7 +172,7 @@ Fill in:
 - `GOOGLE_MAPS_API_KEY_ANDROID` — from Google Cloud Console (enable **Maps SDK for Android** and **Geocoding API**)
 
 ### 3. Apply the database schema
-In the Supabase SQL Editor, run all migration files **in numeric order**, `0001` through `0009`, then run `supabase_auth_overhaul_migration.sql` (phone uniqueness, one-vendor-per-customer, PIN login, vendor-scoped product visibility, and the `finalize_customer_account` / `link_customer_to_vendor` RPCs). Then optionally run `supabase/seed/seed.sql` for sample categories/coupons.
+In the Supabase SQL Editor, run all migration files in `supabase/migrations/` **in numeric order** (`0001` upward, including the payment-management migration `0024`). Then optionally run `supabase/seed/seed.sql` for sample categories/coupons.
 
 In Supabase Auth settings, enable the **Google** provider (for Google sign-in)
 if you want that flow to work. Email/password works out of the box with no
