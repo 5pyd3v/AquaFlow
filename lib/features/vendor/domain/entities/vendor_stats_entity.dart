@@ -5,6 +5,8 @@ class VendorStatsEntity extends Equatable {
   final int pendingOrders;
   final int completedOrders;
   final double todaysRevenue;
+  final int todaysSales;
+  final int pendingSettlement;
   final int totalProducts;
   final int lowStockProducts;
   final int totalRiders;
@@ -14,6 +16,8 @@ class VendorStatsEntity extends Equatable {
     required this.pendingOrders,
     required this.completedOrders,
     required this.todaysRevenue,
+    this.todaysSales = 0,
+    this.pendingSettlement = 0,
     required this.totalProducts,
     required this.lowStockProducts,
     required this.totalRiders,
@@ -21,5 +25,5 @@ class VendorStatsEntity extends Equatable {
 
   @override
   List<Object?> get props =>
-      [todaysOrders, pendingOrders, completedOrders, todaysRevenue, totalProducts, lowStockProducts, totalRiders];
+      [todaysOrders, pendingOrders, completedOrders, todaysRevenue, todaysSales, pendingSettlement, totalProducts, lowStockProducts, totalRiders];
 }

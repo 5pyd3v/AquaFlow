@@ -48,9 +48,31 @@ class VendorFinanceDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             kpisAsync.when(
               loading: () => const _KpiSkeleton(),
-              error: (e, _) => ErrorStateView(
-                message: e.toString(),
-                onRetry: () => ref.invalidate(vendorFinanceKpisProvider),
+              error: (e, _) => Column(
+                children: [
+                  const _KpiGrid(kpis: VendorFinanceKpisEntity.zero()),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => ref.invalidate(vendorFinanceKpisProvider),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh_rounded, size: 14, color: AppColors.warning),
+                          SizedBox(width: 6),
+                          Text('Could not load KPIs — tap to retry',
+                              style: TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               data: (kpis) => _KpiGrid(kpis: kpis),
             ),

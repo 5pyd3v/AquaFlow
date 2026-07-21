@@ -12,10 +12,14 @@ class SettlementModel extends SettlementEntity {
     super.verifiedAt,
     required super.expiresAt,
     super.riderName,
+    super.riderPhone,
     super.vendorName,
   });
 
   factory SettlementModel.fromJson(Map<String, dynamic> json) {
+    final riders = json['riders'] as Map<String, dynamic>?;
+    final profiles = riders?['profiles'] as Map<String, dynamic>?;
+
     return SettlementModel(
       id: json['id'] as String,
       riderId: json['rider_id'] as String,
@@ -28,7 +32,8 @@ class SettlementModel extends SettlementEntity {
           ? DateTime.parse(json['verified_at'] as String)
           : null,
       expiresAt: DateTime.parse(json['expires_at'] as String),
-      riderName: json['rider_name'] as String?,
+      riderName: json['rider_name'] as String? ?? profiles?['full_name'] as String?,
+      riderPhone: json['rider_phone'] as String? ?? profiles?['phone'] as String?,
       vendorName: json['vendor_name'] as String?,
     );
   }

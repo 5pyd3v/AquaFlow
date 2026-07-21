@@ -111,4 +111,17 @@ abstract class PaymentRepository {
   Future<Result<List<PaymentAmendmentEntity>>> getVendorAmendmentRequests(String vendorId);
 
   Future<Result<SettlementDetailEntity>> getSettlementDetail(String settlementId);
+
+  Future<Result<int>> getOrderOutstanding(String orderId);
+
+  Future<Result<int>> getCustomerTotalOutstanding({
+    required String customerProfileId,
+    required String vendorId,
+  });
+
+  Future<Result<void>> processRefund({
+    required String transactionId,
+    required int amount,
+    required String reason,
+  });
 }

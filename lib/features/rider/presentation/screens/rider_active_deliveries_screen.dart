@@ -325,6 +325,21 @@ class _ActionButton extends ConsumerWidget {
                           ),
                           (_) async {
                             Navigator.of(dialogContext).pop();
+                            final payCtrl = ref.read(paymentControllerProvider.notifier);
+                            final outstandingResult = await payCtrl.getOrderOutstanding(delivery.id);
+                            final outstanding = outstandingResult.dataOrNull ?? delivery.totalAmount.round();
+
+                            int customerDebt = 0;
+                            if (delivery.customerProfileId != null) {
+                              final debtResult = await payCtrl.getCustomerTotalOutstanding(
+                                customerProfileId: delivery.customerProfileId!,
+                                vendorId: delivery.vendorId,
+                              );
+                              customerDebt = (debtResult.dataOrNull ?? 0) - outstanding;
+                              if (customerDebt < 0) customerDebt = 0;
+                            }
+
+                            if (!context.mounted) return;
                             final completed = await Navigator.of(context).push<bool>(
                               MaterialPageRoute(
                                 builder: (_) => PaymentCollectionScreen(
@@ -333,8 +348,10 @@ class _ActionButton extends ConsumerWidget {
                                     orderNumber: delivery.orderNumber,
                                     otp: otp,
                                     vendorId: delivery.vendorId,
-                                    outstanding: delivery.totalAmount.round(),
+                                    outstanding: outstanding,
                                     isCod: true,
+                                    customerProfileId: delivery.customerProfileId,
+                                    customerTotalDebt: customerDebt,
                                   ),
                                 ),
                               ),

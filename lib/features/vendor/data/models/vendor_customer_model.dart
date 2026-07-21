@@ -13,6 +13,8 @@ class VendorCustomerModel extends VendorCustomerEntity {
     super.email,
     super.pin,
     super.totalOrders,
+    super.outstanding,
+    super.availableCredit,
     super.address,
     required super.createdAt,
   });
@@ -27,6 +29,8 @@ class VendorCustomerModel extends VendorCustomerEntity {
       email: json['email'] as String?,
       pin: json['pin'] as String?,
       totalOrders: (json['total_orders'] as num?)?.toInt() ?? 0,
+      outstanding: (json['outstanding'] as num?)?.toInt() ?? 0,
+      availableCredit: (json['available_credit'] as num?)?.toInt() ?? 0,
       address: json['address'] as String?,
       createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),

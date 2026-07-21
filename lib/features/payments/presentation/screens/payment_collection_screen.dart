@@ -21,6 +21,8 @@ class PaymentCollectionArgs {
   final String vendorId;
   final int outstanding;
   final bool isCod;
+  final String? customerProfileId;
+  final int customerTotalDebt;
 
   const PaymentCollectionArgs({
     required this.orderId,
@@ -29,6 +31,8 @@ class PaymentCollectionArgs {
     required this.vendorId,
     required this.outstanding,
     this.isCod = true,
+    this.customerProfileId,
+    this.customerTotalDebt = 0,
   });
 }
 
@@ -182,6 +186,10 @@ class _PaymentCollectionScreenState extends ConsumerState<PaymentCollectionScree
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             _summaryCard(),
+            if (widget.args.customerTotalDebt > 0) ...[
+              const SizedBox(height: 12),
+              _customerDebtBanner(),
+            ],
             const SizedBox(height: 16),
             _amountField(),
             const SizedBox(height: 12),
@@ -230,6 +238,34 @@ class _PaymentCollectionScreenState extends ConsumerState<PaymentCollectionScree
           Text(
             _outstanding.toCurrency,
             style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _customerDebtBanner() {
+    final debt = widget.args.customerTotalDebt;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFE082)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFF57C00), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Customer also owes ${debt.toCurrency} from previous orders',
+              style: const TextStyle(
+                color: Color(0xFFE65100),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
           ),
         ],
       ),

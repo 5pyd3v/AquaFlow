@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum AmendmentAction { edit, delete }
+enum AmendmentAction { edit, delete, refund }
 
 enum AmendmentStatus { pending, approved, rejected }
 

@@ -17,6 +17,7 @@ import '../../features/authentication/presentation/screens/reset_password_screen
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/customer/domain/entities/product_entity.dart';
 import '../../features/customer/presentation/screens/customer_shell_screen.dart';
+import '../../features/customer/presentation/screens/customer_wallet_screen.dart';
 import '../../features/customer/presentation/screens/product_detail_screen.dart';
 import '../../features/onboarding/presentation/screens/onboarding_screen.dart';
 import '../../features/orders/presentation/screens/checkout_screen.dart';
@@ -25,7 +26,11 @@ import '../../features/orders/presentation/screens/order_tracking_screen.dart';
 import '../../features/rider/presentation/screens/rider_account_screen.dart';
 import '../../features/rider/presentation/screens/rider_active_deliveries_screen.dart';
 import '../../features/rider/presentation/screens/rider_history_screen.dart';
+import '../../features/rider/presentation/screens/rider_order_detail_screen.dart';
+import '../../features/rider/domain/entities/rider_delivery_entity.dart';
 import '../../features/rider/presentation/screens/rider_shell_screen.dart';
+import '../../features/payments/presentation/screens/refund_screen.dart';
+import '../../features/payments/domain/entities/payment_transaction_entity.dart';
 import '../../features/payments/presentation/screens/vendor_customer_finances_screen.dart';
 import '../../features/payments/presentation/screens/vendor_finance_dashboard_screen.dart';
 import '../../features/payments/presentation/screens/vendor_payment_approvals_screen.dart';
@@ -245,6 +250,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.addAddress,
             builder: (context, state) => const AddAddressScreen(),
           ),
+          GoRoute(
+            path: 'wallet',
+            name: RouteNames.customerWallet,
+            builder: (context, state) => const CustomerWalletScreen(),
+          ),
         ],
       ),
 
@@ -355,6 +365,20 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             path: 'history',
             name: RouteNames.riderHistory,
             builder: (context, state) => const RiderHistoryScreen(),
+            routes: [
+              GoRoute(
+                path: ':orderId',
+                name: RouteNames.riderOrderDetail,
+                builder: (context, state) =>
+                    RiderOrderDetailScreen(delivery: state.extra! as RiderDeliveryEntity),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: 'refund',
+            name: RouteNames.riderRefund,
+            builder: (context, state) =>
+                RefundScreen(payment: state.extra! as PaymentTransactionEntity),
           ),
           GoRoute(
             path: 'account',

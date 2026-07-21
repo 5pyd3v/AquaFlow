@@ -41,6 +41,7 @@ class RouteNames {
   static const addressList = 'address-list';
   static const addressSelect = 'address-select';
   static const addAddress = 'add-address';
+  static const customerWallet = 'customer-wallet';
 
   // Vendor feature routes
   static const vendorOrders = 'vendor-orders';
@@ -59,6 +60,8 @@ class RouteNames {
   static const riderAccount = 'rider-account';
   static const riderWallet = 'rider-wallet';
   static const riderSettlementHistory = 'rider-settlement-history';
+  static const riderOrderDetail = 'rider-order-detail';
+  static const riderRefund = 'rider-refund';
   static const paymentCollection = 'payment-collection';
   static const receiptViewer = 'receipt-viewer';
 
@@ -103,6 +106,7 @@ class RoutePaths {
   static const addressList = '/customer/addresses';
   static const addressSelect = '/customer/addresses/select';
   static const addAddress = '/customer/addresses/add';
+  static const customerWallet = '/customer/wallet';
 
   // Vendor
   static const vendorOrders = '/vendor/orders';
@@ -121,6 +125,8 @@ class RoutePaths {
   static const riderAccount = '/rider/account';
   static const riderWallet = '/rider/wallet';
   static const riderSettlementHistory = '/rider/wallet/history';
+  static const riderOrderDetail = '/rider/history/:orderId';
+  static const riderRefund = '/rider/refund';
   static const paymentCollection = '/rider/deliveries/payment';
   static const receiptViewer = '/rider/receipt';
 
@@ -138,4 +144,5 @@ class RoutePaths {
   static String orderTrackingOf(String orderId) => '/customer/orders/$orderId';
   static String vendorEditProductOf(String productId) => '/vendor/products/edit/$productId';
   static String vendorCustomerFinancesOf(String customerId) => '/vendor/finances/customer/$customerId';
+  static String riderOrderDetailOf(String orderId) => '/rider/history/$orderId';
 }

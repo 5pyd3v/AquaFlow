@@ -13,6 +13,7 @@ class SettlementEntity extends Equatable {
   final DateTime? verifiedAt;
   final DateTime expiresAt;
   final String? riderName;
+  final String? riderPhone;
   final String? vendorName;
 
   const SettlementEntity({
@@ -26,6 +27,7 @@ class SettlementEntity extends Equatable {
     this.verifiedAt,
     required this.expiresAt,
     this.riderName,
+    this.riderPhone,
     this.vendorName,
   });
 

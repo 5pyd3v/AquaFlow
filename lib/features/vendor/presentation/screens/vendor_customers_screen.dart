@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shadows.dart';
+import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../domain/entities/vendor_customer_entity.dart';
@@ -296,6 +297,27 @@ class _CustomerCard extends StatelessWidget {
               ],
             ),
           ],
+          if (customer.outstanding > 0 || customer.availableCredit > 0) ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (customer.outstanding > 0)
+                  _FinanceBadge(
+                    label: 'Owes ${customer.outstanding.toCurrency}',
+                    icon: Icons.error_outline_rounded,
+                    color: AppColors.error,
+                  ),
+                if (customer.outstanding > 0 && customer.availableCredit > 0)
+                  const SizedBox(width: 8),
+                if (customer.availableCredit > 0)
+                  _FinanceBadge(
+                    label: 'Credit ${customer.availableCredit.toCurrency}',
+                    icon: Icons.account_balance_wallet_rounded,
+                    color: const Color(0xFF10B981),
+                  ),
+              ],
+            ),
+          ],
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -349,6 +371,45 @@ class _CustomerCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
+    );
+  }
+}
+
+class _FinanceBadge extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _FinanceBadge({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

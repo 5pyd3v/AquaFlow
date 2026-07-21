@@ -64,9 +64,9 @@ class VendorDashboardScreen extends ConsumerWidget {
                       gradient: AppColors.primaryGradient,
                     ),
                     _StatTileData(
-                      icon: Icons.payments_rounded,
-                      label: 'Revenue',
-                      value: stats.todaysRevenue.toCurrency,
+                      icon: Icons.storefront_rounded,
+                      label: 'Sales',
+                      value: stats.todaysSales.toCurrency,
                       gradient: const LinearGradient(
                         colors: [Color(0xFF34D399), Color(0xFF10B981)],
                       ),
@@ -87,6 +87,15 @@ class VendorDashboardScreen extends ConsumerWidget {
                       gradient: const LinearGradient(
                         colors: [Color(0xFF60A5FA), Color(0xFF3B82F6)],
                       ),
+                    ),
+                    _StatTileData(
+                      icon: Icons.account_balance_wallet_rounded,
+                      label: 'Unsettled',
+                      value: stats.pendingSettlement.toCurrency,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF8A65), Color(0xFFE64A19)],
+                      ),
+                      pulse: stats.pendingSettlement > 0,
                     ),
                     _StatTileData(
                       icon: Icons.inventory_2_rounded,

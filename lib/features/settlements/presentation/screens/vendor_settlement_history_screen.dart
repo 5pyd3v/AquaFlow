@@ -6,7 +6,6 @@ import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../domain/entities/settlement_entity.dart';
 import '../providers/settlement_providers.dart';
-import '../widgets/settlement_history_tile.dart';
 
 class VendorSettlementHistoryScreen extends ConsumerStatefulWidget {
   const VendorSettlementHistoryScreen({super.key});
@@ -68,7 +67,7 @@ class _VendorSettlementHistoryScreenState
             TextField(
               onChanged: (v) => setState(() => _search = v),
               decoration: InputDecoration(
-                hintText: 'Search by amount or code',
+                hintText: 'Search by rider name or amount',
                 prefixIcon: const Icon(Icons.search_rounded),
                 filled: true,
                 fillColor: AppColors.surface,
@@ -138,7 +137,7 @@ class _VendorSettlementHistoryScreenState
     return all.where((s) {
       if (_statusFilter != null && s.status != _statusFilter) return false;
       if (_search.isNotEmpty) {
-        final hay = '${s.amount} ${s.code}'.toLowerCase();
+        final hay = '${s.amount} ${s.riderName ?? ''} ${s.riderPhone ?? ''}'.toLowerCase();
         if (!hay.contains(_search.toLowerCase())) return false;
       }
       return true;
@@ -172,50 +171,118 @@ class _VendorSettlementHistoryScreenState
   }
 }
 
-/// Vendor settlement tile — reuses the base tile but adds a masked/visible
-/// OTP row (visible only within the 24h window, per the OTP rule).
 class _VendorSettlementTile extends StatelessWidget {
   final SettlementEntity settlement;
   const _VendorSettlementTile({required this.settlement});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SettlementHistoryTile(settlement: settlement),
-        Container(
-          margin: const EdgeInsets.only(top: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceMuted,
-            borderRadius: BorderRadius.circular(10),
+    final isVerified = settlement.status == SettlementStatus.verified;
+    final isExpired = settlement.status == SettlementStatus.expired;
+    final statusColor = isVerified
+        ? const Color(0xFF10B981)
+        : isExpired
+            ? AppColors.error
+            : const Color(0xFFFF8F00);
+    final statusLabel = isVerified
+        ? 'Verified'
+        : isExpired
+            ? 'Expired'
+            : 'Pending';
+
+    final date = settlement.verifiedAt ?? settlement.createdAt;
+    final dateStr = '${date.day}/${date.month}/${date.year}';
+    final timeStr =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    final riderInitial = (settlement.riderName ?? 'R').substring(0, 1).toUpperCase();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+            child: Text(
+              riderInitial,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+                fontSize: 16,
+              ),
+            ),
           ),
-          child: Row(
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  settlement.riderName ?? 'Rider',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                if (settlement.riderPhone != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    settlement.riderPhone!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  '$dateStr  $timeStr',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Icon(
-                settlement.isOtpVisible ? Icons.vpn_key_rounded : Icons.lock_outline_rounded,
-                size: 15,
-                color: AppColors.textTertiary,
-              ),
-              const SizedBox(width: 8),
               Text(
-                settlement.isOtpVisible ? 'OTP' : 'OTP Expired',
-                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
-              ),
-              const Spacer(),
-              Text(
-                settlement.isOtpVisible ? settlement.code : '••••••',
+                settlement.amount.toCurrency,
                 style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 3,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  statusLabel,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

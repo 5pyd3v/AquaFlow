@@ -65,7 +65,11 @@ class AccountScreen extends ConsumerWidget {
                   onTap: () => context.pushNamed(RouteNames.orderHistory),
                 ),
                 const _TileDivider(),
-                const _MenuTile(icon: Icons.account_balance_wallet_outlined, label: 'Wallet', isComingSoon: true),
+                _MenuTile(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'Wallet',
+                  onTap: () => context.pushNamed(RouteNames.customerWallet),
+                ),
                 const _TileDivider(),
                 const _MenuTile(icon: Icons.local_offer_outlined, label: 'Coupons', isComingSoon: true),
                 const _TileDivider(),

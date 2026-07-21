@@ -125,7 +125,7 @@ class SettlementRepositoryImpl implements SettlementRepository {
     try {
       final rows = await _client
           .from(SupabaseConfig.codSettlements)
-          .select()
+          .select('*, riders(profiles(full_name, phone))')
           .eq('vendor_id', vendorId)
           .order('created_at', ascending: false);
       final settlements = (rows as List)

@@ -133,7 +133,11 @@ class PaymentRepositoryImpl implements PaymentRepository {
     try {
       await _client.rpc('request_payment_amendment', params: {
         'p_transaction_id': transactionId,
-        'p_action': action == AmendmentAction.delete ? 'delete' : 'edit',
+        'p_action': switch (action) {
+          AmendmentAction.delete => 'delete',
+          AmendmentAction.refund => 'refund',
+          AmendmentAction.edit => 'edit',
+        },
         'p_amount': amount,
         'p_reason': reason,
       });
@@ -277,6 +281,52 @@ class PaymentRepositoryImpl implements PaymentRepository {
         'p_settlement_id': settlementId,
       });
       return Success(SettlementDetailEntity.fromJson(_asMap(result)));
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
+  @override
+  Future<Result<int>> getOrderOutstanding(String orderId) async {
+    try {
+      final result = await _client.rpc('order_outstanding', params: {
+        'p_order_id': orderId,
+      });
+      return Success((result as num?)?.round() ?? 0);
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
+  @override
+  Future<Result<int>> getCustomerTotalOutstanding({
+    required String customerProfileId,
+    required String vendorId,
+  }) async {
+    try {
+      final result = await _client.rpc('get_customer_total_outstanding', params: {
+        'p_customer_profile_id': customerProfileId,
+        'p_vendor_id': vendorId,
+      });
+      return Success((result as num?)?.round() ?? 0);
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
+  @override
+  Future<Result<void>> processRefund({
+    required String transactionId,
+    required int amount,
+    required String reason,
+  }) async {
+    try {
+      await _client.rpc('process_refund', params: {
+        'p_transaction_id': transactionId,
+        'p_amount': amount,
+        'p_reason': reason,
+      });
+      return const Success(null);
     } catch (e) {
       return Error(ErrorMapper.map(e));
     }

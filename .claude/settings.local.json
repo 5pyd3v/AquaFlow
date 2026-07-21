@@ -15,7 +15,12 @@
       "Bash(git push *)",
       "Bash(gh pr create --base main --head chore/remove-stale-root-migrations --title 'chore: remove stale root-level migration files' --body ' *)",
       "Bash(git credential *)",
-      "Bash(git merge *)"
+      "Bash(git merge *)",
+      "Read(//c/Users/spydev/.claude/plans/**)",
+      "Bash(mkdir -p \"C:/Users/spydev/.claude/plans/\")",
+      "Bash(cat /dev/null > \"C:/Users/spydev/.claude/plans/hidden-scribbling-eagle-agent-accb142d45746ded0.md\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); fs.writeFileSync\\('C:/Users/spydev/.claude/plans/hidden-scribbling-eagle-agent-accb142d45746ded0.md', 'Plan written via message output - see agent response', 'utf8'\\); console.log\\('done'\\)\")"
     ]
   }
 }

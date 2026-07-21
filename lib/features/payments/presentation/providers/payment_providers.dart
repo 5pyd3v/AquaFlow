@@ -167,6 +167,35 @@ class PaymentController extends AutoDisposeAsyncNotifier<void> {
     return result;
   }
 
+  Future<Result<int>> getOrderOutstanding(String orderId) async {
+    return _repo.getOrderOutstanding(orderId);
+  }
+
+  Future<Result<int>> getCustomerTotalOutstanding({
+    required String customerProfileId,
+    required String vendorId,
+  }) async {
+    return _repo.getCustomerTotalOutstanding(
+      customerProfileId: customerProfileId,
+      vendorId: vendorId,
+    );
+  }
+
+  Future<Result<void>> processRefund({
+    required String transactionId,
+    required int amount,
+    required String reason,
+  }) async {
+    state = const AsyncLoading();
+    final result = await _repo.processRefund(
+      transactionId: transactionId,
+      amount: amount,
+      reason: reason,
+    );
+    state = result.fold((f) => AsyncError(f, StackTrace.current), (_) => const AsyncData(null));
+    return result;
+  }
+
   void _invalidateVendorViews() {
     ref.invalidate(vendorFinanceKpisProvider);
     ref.invalidate(vendorPaymentOverviewProvider);

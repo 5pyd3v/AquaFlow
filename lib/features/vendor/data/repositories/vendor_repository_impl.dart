@@ -135,6 +135,30 @@ class VendorRepositoryImpl implements VendorRepository {
 
       final todaysRevenue = nonCodRevenue + codRevenue;
 
+      // Today's sales = sum of total_amount for today's delivered/completed
+      // orders. This is the actual sales figure (what was sold), regardless
+      // of whether the cash has been settled or not.
+      final todaysSales = todaysRows.where((row) {
+        final status = row['status'] as String?;
+        return status == 'delivered' || status == 'completed';
+      }).fold<int>(
+          0, (sum, row) => sum + ((row['total_amount'] as num?)?.round() ?? 0));
+
+      // Pending settlement = unsettled active cash payments (riders haven't
+      // handed over yet). Falls back to 0 if payment_transactions has no rows.
+      int pendingSettlement = 0;
+      try {
+        final unsettledRows = await _client
+            .from('payment_transactions')
+            .select('amount')
+            .eq('vendor_id', vendorId)
+            .eq('status', 'active')
+            .eq('settled', false)
+            .inFilter('payment_type', ['full', 'partial', 'over']);
+        pendingSettlement = (unsettledRows as List)
+            .fold<int>(0, (sum, row) => sum + ((row['amount'] as num?)?.round() ?? 0));
+      } catch (_) {}
+
       final productsRows = products as List;
       final lowStockCount = productsRows
           .where((row) => ((row['stock_quantity'] as num?)?.toInt() ?? 0) < 20)
@@ -145,6 +169,8 @@ class VendorRepositoryImpl implements VendorRepository {
         pendingOrders: (pendingOrders as List).length,
         completedOrders: (completedOrders as List).length,
         todaysRevenue: todaysRevenue,
+        todaysSales: todaysSales,
+        pendingSettlement: pendingSettlement,
         totalProducts: productsRows.length,
         lowStockProducts: lowStockCount,
         totalRiders: (riders as List).length,

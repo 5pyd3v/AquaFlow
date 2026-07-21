@@ -15,6 +15,7 @@ class RiderDeliveryEntity extends Equatable {
   final String? vendorAddress;
   final double? vendorLat;
   final double? vendorLng;
+  final String? customerProfileId;
   final String customerName;
   final String customerPhone;
   final String deliveryAddress;
@@ -35,6 +36,7 @@ class RiderDeliveryEntity extends Equatable {
     this.vendorAddress,
     this.vendorLat,
     this.vendorLng,
+    this.customerProfileId,
     required this.customerName,
     required this.customerPhone,
     required this.deliveryAddress,
@@ -59,6 +61,7 @@ class RiderDeliveryEntity extends Equatable {
         vendorAddress,
         vendorLat,
         vendorLng,
+        customerProfileId,
         customerName,
         customerPhone,
         deliveryAddress,

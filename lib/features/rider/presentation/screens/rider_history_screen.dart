@@ -8,6 +8,7 @@ import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../domain/entities/rider_delivery_entity.dart';
 import '../providers/rider_providers.dart';
+import 'rider_order_detail_screen.dart';
 
 class RiderHistoryScreen extends ConsumerWidget {
   const RiderHistoryScreen({super.key});
@@ -54,7 +55,14 @@ class _HistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RiderOrderDetailScreen(delivery: delivery),
+        ),
+      ),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -105,6 +113,7 @@ class _HistoryTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }

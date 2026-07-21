@@ -22,6 +22,16 @@ class VendorFinanceKpisEntity extends Equatable {
     required this.awaitingSettlement,
   });
 
+  const VendorFinanceKpisEntity.zero()
+      : todaysCollection = 0,
+        monthsCollection = 0,
+        pendingCollection = 0,
+        outstandingCustomers = 0,
+        creditsIssued = 0,
+        refunds = 0,
+        partialCount = 0,
+        awaitingSettlement = 0;
+
   factory VendorFinanceKpisEntity.fromJson(Map<String, dynamic> json) {
     int i(String k) => (json[k] as num?)?.round() ?? 0;
     return VendorFinanceKpisEntity(
