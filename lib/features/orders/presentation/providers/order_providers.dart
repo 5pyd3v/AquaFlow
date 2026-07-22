@@ -9,9 +9,13 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepositoryImpl();
 });
 
-final orderHistoryProvider = FutureProvider.autoDispose<List<OrderEntity>>((ref) async {
-  final result = await ref.read(orderRepositoryProvider).getOrderHistory();
-  return result.fold((failure) => throw failure, (data) => data);
+// Realtime stream, not a one-shot fetch: the Orders tab lives inside the
+// customer shell's IndexedStack and is built once at app start, so a plain
+// FutureProvider would only ever fetch that first snapshot. A freshly
+// placed (still-pending) order — or any status change — needs to appear
+// without the customer needing to leave and re-enter the tab.
+final orderHistoryProvider = StreamProvider.autoDispose<List<OrderEntity>>((ref) {
+  return ref.watch(orderRepositoryProvider).watchOrderHistory();
 });
 
 final orderTrackingProvider =

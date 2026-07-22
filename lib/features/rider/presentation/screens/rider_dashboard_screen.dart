@@ -149,6 +149,10 @@ class RiderDashboardScreen extends ConsumerWidget {
               _ActiveDeliveriesCTA(
                 onTap: () => context.pushNamed(RouteNames.riderActiveDeliveries),
               ),
+              const SizedBox(height: 12),
+              _PendingPaymentsCTA(
+                onTap: () => context.pushNamed(RouteNames.riderPendingPayments),
+              ),
             ],
           ),
         ),
@@ -629,6 +633,65 @@ class _CodBalanceCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _PendingPaymentsCTA extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PendingPaymentsCTA({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFC96B), Color(0xFFFF9A2E), Color(0xFFF06E0F)],
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: AppShadows.brand(opacity: 0.32),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.payments_rounded,
+                  color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Collect Pending Payments',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Collect debt from customers on your orders',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+          ],
+        ),
       ),
     );
   }

@@ -72,4 +72,8 @@ abstract class VendorRepository {
   /// see (enforced by RLS — see migration 0012 — rather than filtered
   /// client-side), for the "Live Riders" map.
   Stream<List<RiderLocationEntity>> watchRiderLocations();
+
+  /// Rider-scoped pending customers - only customers with outstanding debt on
+  /// orders assigned to THIS rider (uses get_rider_pending_customers RPC from 0026).
+  Future<Result<List<VendorCustomerEntity>>> getRiderPendingCustomers(String riderId);
 }

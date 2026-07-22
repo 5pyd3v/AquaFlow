@@ -39,4 +39,11 @@ abstract class RiderRepository {
     double? headingDegrees,
     double? speedKmh,
   });
+
+  /// Check if a specific customer has outstanding payments on orders assigned to this rider.
+  /// Used to show "Defaulter" badge on order detail screen.
+  Future<Result<int>> getCustomerOutstanding({
+    required String customerProfileId,
+    required String riderId,
+  });
 }

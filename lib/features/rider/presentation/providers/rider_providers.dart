@@ -57,6 +57,24 @@ final deliveryHistoryProvider = FutureProvider.autoDispose<List<RiderDeliveryEnt
   return result.fold((failure) => throw failure, (data) => data);
 });
 
+/// Check if a specific customer has outstanding payments on orders assigned to this rider.
+/// Used to show "Defaulter" badge on order detail screen.
+final customerOutstandingProvider =
+    FutureProvider.autoDispose.family<int, CustomerOutstandingParams>((ref, params) async {
+  final result = await ref.read(riderRepositoryProvider).getCustomerOutstanding(
+        customerProfileId: params.customerProfileId,
+        riderId: params.riderId,
+      );
+  return result.fold((failure) => 0, (data) => data);
+});
+
+/// Parameters for checking customer outstanding
+class CustomerOutstandingParams {
+  final String customerProfileId;
+  final String riderId;
+  CustomerOutstandingParams(this.customerProfileId, this.riderId);
+}
+
 /// Toggles the rider's shift (available/offline) and starts or stops
 /// the live-location broadcast loop accordingly — going "on shift"
 /// with no active delivery yet still updates the rider's own last-

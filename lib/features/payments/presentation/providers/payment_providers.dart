@@ -196,6 +196,36 @@ class PaymentController extends AutoDisposeAsyncNotifier<void> {
     return result;
   }
 
+  Future<Result<Map<String, dynamic>>> collectPendingPayment({
+    required String customerProfileId,
+    required String vendorId,
+    required int amount,
+    String? receiptUrl,
+    ReceiptMeta? receiptMeta,
+    String? notes,
+    required String idempotencyKey,
+  }) async {
+    state = const AsyncLoading();
+    final result = await _repo.collectPendingPayment(
+      customerProfileId: customerProfileId,
+      vendorId: vendorId,
+      amount: amount,
+      receiptUrl: receiptUrl,
+      receiptMeta: receiptMeta,
+      notes: notes,
+      idempotencyKey: idempotencyKey,
+    );
+    state = result.fold((f) => AsyncError(f, StackTrace.current), (_) => const AsyncData(null));
+    if (result.isSuccess) {
+      _invalidateRiderViews();
+    }
+    return result;
+  }
+
+  void _invalidateRiderViews() {
+    ref.invalidate(vendorCustomersProvider);
+  }
+
   void _invalidateVendorViews() {
     ref.invalidate(vendorFinanceKpisProvider);
     ref.invalidate(vendorPaymentOverviewProvider);

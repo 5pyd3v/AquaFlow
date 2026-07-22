@@ -64,6 +64,7 @@ class RouteNames {
   static const riderRefund = 'rider-refund';
   static const paymentCollection = 'payment-collection';
   static const receiptViewer = 'receipt-viewer';
+  static const riderPendingPayments = 'rider-pending-payments';
 
   // Settlement routes
   static const vendorReceiveCod = 'vendor-receive-cod';
@@ -129,6 +130,7 @@ class RoutePaths {
   static const riderRefund = '/rider/refund';
   static const paymentCollection = '/rider/deliveries/payment';
   static const receiptViewer = '/rider/receipt';
+  static const riderPendingPayments = '/rider/pending-payments';
 
   // Settlements
   static const vendorReceiveCod = '/vendor/receive-cod';

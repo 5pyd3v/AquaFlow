@@ -46,6 +46,9 @@ class OrderEntity extends Equatable {
   final double totalAmount;
   final String paymentMethod;
   final String paymentStatus;
+  final int amountPaid;
+  final int outstandingAmount;
+  final int creditApplied;
   final DateTime createdAt;
   final DateTime? deliveredAt;
   final List<OrderItemEntity> items;
@@ -69,10 +72,16 @@ class OrderEntity extends Equatable {
     required this.totalAmount,
     required this.paymentMethod,
     required this.paymentStatus,
+    this.amountPaid = 0,
+    this.outstandingAmount = 0,
+    this.creditApplied = 0,
     required this.createdAt,
     this.deliveredAt,
     this.items = const [],
   });
+
+  /// True once any part of this order's payment has been refunded.
+  bool get isRefunded => paymentStatus == 'refunded';
 
   @override
   List<Object?> get props => [
@@ -94,6 +103,9 @@ class OrderEntity extends Equatable {
         totalAmount,
         paymentMethod,
         paymentStatus,
+        amountPaid,
+        outstandingAmount,
+        creditApplied,
         createdAt,
         deliveredAt,
         items,

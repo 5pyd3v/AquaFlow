@@ -124,4 +124,16 @@ abstract class PaymentRepository {
     required int amount,
     required String reason,
   });
+
+  /// Rider collects pending payment from a customer on assigned orders.
+  /// Uses FIFO allocation across outstanding orders for this rider.
+  Future<Result<Map<String, dynamic>>> collectPendingPayment({
+    required String customerProfileId,
+    required String vendorId,
+    required int amount,
+    String? receiptUrl,
+    ReceiptMeta? receiptMeta,
+    String? notes,
+    required String idempotencyKey,
+  });
 }

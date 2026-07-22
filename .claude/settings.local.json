@@ -20,7 +20,12 @@
       "Bash(mkdir -p \"C:/Users/spydev/.claude/plans/\")",
       "Bash(cat /dev/null > \"C:/Users/spydev/.claude/plans/hidden-scribbling-eagle-agent-accb142d45746ded0.md\")",
       "Bash(python3 -c ' *)",
-      "Bash(node -e \"const fs=require\\('fs'\\); fs.writeFileSync\\('C:/Users/spydev/.claude/plans/hidden-scribbling-eagle-agent-accb142d45746ded0.md', 'Plan written via message output - see agent response', 'utf8'\\); console.log\\('done'\\)\")"
+      "Bash(node -e \"const fs=require\\('fs'\\); fs.writeFileSync\\('C:/Users/spydev/.claude/plans/hidden-scribbling-eagle-agent-accb142d45746ded0.md', 'Plan written via message output - see agent response', 'utf8'\\); console.log\\('done'\\)\")",
+      "Bash(dart analyze *)",
+      "Bash(flutter devices *)",
+      "Skill(run)",
+      "Skill(run:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8765)"
     ]
   }
 }

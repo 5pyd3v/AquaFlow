@@ -332,6 +332,32 @@ class PaymentRepositoryImpl implements PaymentRepository {
     }
   }
 
+  @override
+  Future<Result<Map<String, dynamic>>> collectPendingPayment({
+    required String customerProfileId,
+    required String vendorId,
+    required int amount,
+    String? receiptUrl,
+    ReceiptMeta? receiptMeta,
+    String? notes,
+    required String idempotencyKey,
+  }) async {
+    try {
+      final result = await _client.rpc('collect_pending_payment', params: {
+        'p_customer_profile_id': customerProfileId,
+        'p_vendor_id': vendorId,
+        'p_amount': amount,
+        'p_receipt_url': receiptUrl,
+        'p_receipt_meta': receiptMeta?.toJson() ?? {},
+        'p_notes': notes,
+        'p_idempotency_key': idempotencyKey,
+      });
+      return Success(_asMap(result));
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
   /// Supabase RPC returns dynamic JSON; normalise to a String-keyed map.
   Map<String, dynamic> _asMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;

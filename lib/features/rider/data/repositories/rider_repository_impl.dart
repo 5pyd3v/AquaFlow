@@ -98,18 +98,19 @@ class RiderRepositoryImpl implements RiderRepository {
 
       final todaysCount = (todaysOrders as List).length;
 
-      // COD financials — get total collected from all COD orders
-      final codOrders = await _client
-          .from(SupabaseConfig.orders)
-          .select('total_amount')
+      // COD financials — get total collected from payment_transactions (actual cash collected)
+      // This ensures partial payments are correctly tracked
+      final paymentTransactions = await _client
+          .from(SupabaseConfig.paymentTransactions)
+          .select('amount')
           .eq('rider_id', riderId)
-          .eq('payment_method', 'cod')
-          .inFilter('status', ['delivered', 'completed']);
+          .eq('status', 'active')
+          .inFilter('payment_type', ['full', 'partial', 'over']);
 
-      final totalCodCollected = (codOrders as List).fold<double>(
-        0,
-        (sum, row) => sum + ((row['total_amount'] as num?)?.toDouble() ?? 0),
-      );
+      double totalCodCollected = 0;
+      for (final txn in (paymentTransactions as List)) {
+        totalCodCollected += (txn['amount'] as num?)?.toDouble() ?? 0;
+      }
 
       // Get verified + pending from settlements
       final settlements = await _client
@@ -128,6 +129,8 @@ class RiderRepositoryImpl implements RiderRepository {
         }
       }
 
+      // Outstanding = what rider has collected but not yet handed to vendor
+      // (collected from payment_transactions - verified settlements)
       final outstanding = (totalCodCollected - totalVerified).clamp(0.0, double.infinity);
 
       return Success(RiderStatsEntity(
@@ -225,6 +228,31 @@ class RiderRepositoryImpl implements RiderRepository {
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       });
       return const Success(null);
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
+  @override
+  Future<Result<int>> getCustomerOutstanding({
+    required String customerProfileId,
+    required String riderId,
+  }) async {
+    try {
+      // Query orders for this customer assigned to this rider
+      // Use outstanding_amount column which is already correctly maintained
+      final rows = await _client
+          .from(SupabaseConfig.orders)
+          .select('outstanding_amount')
+          .eq('customer_profile_id', customerProfileId)
+          .eq('rider_id', riderId)
+          .not('status', 'in', '("cancelled","rejected")');
+
+      int totalOutstanding = 0;
+      for (final row in (rows as List)) {
+        totalOutstanding += (row['outstanding_amount'] as num?)?.toInt() ?? 0;
+      }
+      return Success(totalOutstanding);
     } catch (e) {
       return Error(ErrorMapper.map(e));
     }

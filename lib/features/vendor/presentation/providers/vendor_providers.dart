@@ -144,3 +144,18 @@ final vendorCustomersProvider =
 final riderLocationsStreamProvider = StreamProvider.autoDispose<List<RiderLocationEntity>>((ref) {
   return ref.watch(vendorRepositoryProvider).watchRiderLocations();
 });
+
+/// Rider-scoped pending customers - only customers with outstanding debt on
+/// orders assigned to THIS rider (uses get_rider_pending_customers RPC from 0026).
+final riderPendingCustomersProvider =
+    FutureProvider.autoDispose.family<List<VendorCustomerEntity>, String>((ref, riderId) async {
+  final result = await ref.read(vendorRepositoryProvider).getRiderPendingCustomers(riderId);
+  return result.fold((failure) => throw failure, (data) => data);
+});
+
+/// Family version of vendorCustomersProvider for specific vendor ID (used in pending payments screen).
+final vendorCustomersFamilyProvider =
+    FutureProvider.autoDispose.family<List<VendorCustomerEntity>, String>((ref, vendorId) async {
+  final result = await ref.read(vendorRepositoryProvider).getMyCustomers(vendorId);
+  return result.fold((failure) => throw failure, (data) => data);
+});

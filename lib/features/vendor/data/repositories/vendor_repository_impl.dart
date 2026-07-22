@@ -434,4 +434,26 @@ class VendorRepositoryImpl implements VendorRepository {
         .stream(primaryKey: ['rider_id'])
         .map((rows) => rows.map((row) => RiderLocationEntity.fromJson(row)).toList());
   }
+
+  @override
+  Future<Result<List<VendorCustomerEntity>>> getRiderPendingCustomers(String riderId) async {
+    try {
+      final rows = await _client.rpc('get_rider_pending_customers', params: {
+        'p_rider_id': riderId,
+      });
+      final customers = (rows as List)
+          .map((row) => VendorCustomerModel.fromJson(_asMap(row)))
+          .toList();
+      return Success(customers);
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
+  /// Supabase RPC returns dynamic JSON; normalise to a String-keyed map.
+  Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    throw const FormatException('Unexpected RPC response shape');
+  }
 }

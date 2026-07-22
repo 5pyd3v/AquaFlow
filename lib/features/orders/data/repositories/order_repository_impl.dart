@@ -81,6 +81,27 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
+  Stream<List<OrderEntity>> watchOrderHistory({int limit = 100}) {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return Stream.value(const []);
+
+    // Same "stream as change signal, then re-fetch the joined rows"
+    // approach as watchOrder — raw realtime rows have no joins, and this
+    // way a brand-new (still-pending) order or any status change made by
+    // the vendor/rider shows up immediately without a manual pull-to-refresh.
+    return _client
+        .from(SupabaseConfig.orders)
+        .stream(primaryKey: ['id'])
+        .eq('customer_profile_id', userId)
+        .order('created_at', ascending: false)
+        .limit(limit)
+        .asyncMap((_) async {
+      final result = await getOrderHistory(pageSize: limit);
+      return result.fold((failure) => throw failure, (data) => data);
+    });
+  }
+
+  @override
   Future<Result<OrderEntity>> getOrderById(String orderId) async {
     try {
       final row = await _client

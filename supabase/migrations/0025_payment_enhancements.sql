@@ -360,12 +360,10 @@ begin
   from public.wallets where profile_id = v_profile_id;
   v_balance := coalesce(v_balance, 0);
 
-  select coalesce(sum(greatest(
-    round(coalesce(total_amount,0)) - coalesce(amount_paid,0) - coalesce(credit_applied,0), 0
-  )), 0),
-  count(*) filter (where greatest(
-    round(coalesce(total_amount,0)) - coalesce(amount_paid,0) - coalesce(credit_applied,0), 0
-  ) > 0)
+  -- Use outstanding_amount column which correctly reflects debt after refunds
+  -- The process_refund RPC sets this to 0 for refunded orders
+  select coalesce(sum(outstanding_amount), 0),
+    count(*) filter (where outstanding_amount > 0)
   into v_total_outstanding, v_pending_order_count
   from public.orders
   where customer_profile_id = v_profile_id

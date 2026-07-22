@@ -11,6 +11,7 @@ import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../payments/domain/entities/payment_transaction_entity.dart';
 import '../../../payments/presentation/providers/payment_providers.dart';
 import '../../domain/entities/rider_delivery_entity.dart';
+import '../providers/rider_providers.dart';
 
 class RiderOrderDetailScreen extends ConsumerWidget {
   final RiderDeliveryEntity delivery;
@@ -34,7 +35,7 @@ class RiderOrderDetailScreen extends ConsumerWidget {
         children: [
           _orderInfoCard(context),
           const SizedBox(height: 16),
-          _customerCard(context),
+          _customerCard(context, ref),
           const SizedBox(height: 16),
           _itemsCard(context),
           const SizedBox(height: 16),
@@ -114,7 +115,18 @@ class RiderOrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _customerCard(BuildContext context) {
+  Widget _customerCard(BuildContext context, WidgetRef ref) {
+    // Check if customer has pending payments on their assigned orders
+    AsyncValue<int> outstandingAsync = const AsyncData(0);
+    if (delivery.customerProfileId != null) {
+      // This requires the rider ID - we need to get it from myRiderProvider
+      final rider = ref.watch(myRiderProvider).valueOrNull;
+      if (rider != null) {
+        outstandingAsync = ref.watch(customerOutstandingProvider(
+            CustomerOutstandingParams(delivery.customerProfileId!, rider.id)));
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -131,6 +143,41 @@ class RiderOrderDetailScreen extends ConsumerWidget {
               const Icon(Icons.person_rounded, size: 20, color: AppColors.info),
               const SizedBox(width: 8),
               Text('Customer', style: Theme.of(context).textTheme.titleSmall),
+              const Spacer(),
+              outstandingAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (e, _) => const SizedBox.shrink(),
+                data: (outstanding) {
+                  if (outstanding > 0) {
+                    return Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: const Color(0xFFFFE0B2).withValues(alpha: 0.5)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_rounded,
+                              size: 14, color: Color(0xFFE65100)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Defaulter',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFE65100)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
             ],
           ),
           const Divider(height: 20),

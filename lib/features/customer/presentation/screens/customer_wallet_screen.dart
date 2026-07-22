@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shadows.dart';
 import '../../../../shared/extensions/datetime_extensions.dart';
 import '../../../../shared/extensions/num_extensions.dart';
+import '../../../../shared/widgets/cards/app_card.dart';
 import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../domain/entities/wallet_entity.dart';
@@ -75,14 +76,10 @@ class CustomerWalletScreen extends ConsumerWidget {
   }
 
   Widget _emptyTransactions() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Column(
+    return const AppCard(
+      padding: EdgeInsets.all(24),
+      radius: 16,
+      child: Column(
         children: [
           Icon(Icons.receipt_long_rounded, size: 40, color: AppColors.textTertiary),
           SizedBox(height: 12),
@@ -220,13 +217,9 @@ class _TransactionTile extends StatelessWidget {
         : Icons.remove_circle_outline_rounded;
     final sign = isCredit ? '+' : '-';
 
-    return Container(
+    return AppCard(
+      radius: 14,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
       child: Row(
         children: [
           Container(

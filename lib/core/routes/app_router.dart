@@ -29,6 +29,7 @@ import '../../features/rider/presentation/screens/rider_history_screen.dart';
 import '../../features/rider/presentation/screens/rider_order_detail_screen.dart';
 import '../../features/rider/domain/entities/rider_delivery_entity.dart';
 import '../../features/rider/presentation/screens/rider_shell_screen.dart';
+import '../../features/rider/presentation/screens/rider_pending_payments_screen.dart';
 import '../../features/payments/presentation/screens/refund_screen.dart';
 import '../../features/payments/domain/entities/payment_transaction_entity.dart';
 import '../../features/payments/presentation/screens/vendor_customer_finances_screen.dart';
@@ -379,6 +380,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             name: RouteNames.riderRefund,
             builder: (context, state) =>
                 RefundScreen(payment: state.extra! as PaymentTransactionEntity),
+          ),
+          GoRoute(
+            path: 'pending-payments',
+            name: RouteNames.riderPendingPayments,
+            builder: (context, state) => const RiderPendingPaymentsScreen(),
           ),
           GoRoute(
             path: 'account',
