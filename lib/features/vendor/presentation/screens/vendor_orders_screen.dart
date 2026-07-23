@@ -10,7 +10,7 @@ import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../domain/entities/vendor_order_entity.dart';
 import '../providers/vendor_providers.dart';
-import 'rider_assignment_sheet.dart';
+import '../widgets/rider_assignment_sheet.dart';
 
 class VendorOrdersScreen extends ConsumerStatefulWidget {
   const VendorOrdersScreen({super.key});

@@ -9,7 +9,7 @@ import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../../../shared/widgets/misc/gradient_hero_header.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
-import '../../../cart/presentation/providers/cart_provider.dart';
+import '../../../cart/presentation/providers/cart_providers.dart';
 import '../providers/catalog_providers.dart';
 import '../widgets/product_card.dart';
 

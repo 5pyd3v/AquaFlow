@@ -23,7 +23,7 @@ class RiderProfileModel extends RiderProfileEntity {
       vendorName: vendor?['business_name'] as String?,
       vehicleType: json['vehicle_type'] as String?,
       vehiclePlate: json['vehicle_plate'] as String?,
-      status: RiderShiftStatus.fromDbValue(json['status'] as String? ?? 'offline'),
+      status: RiderStatus.fromDbValue(json['status'] as String? ?? 'offline'),
       rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
       totalDeliveries: (json['total_deliveries'] as num?)?.toInt() ?? 0,
       isOnShift: json['is_on_shift'] as bool? ?? false,

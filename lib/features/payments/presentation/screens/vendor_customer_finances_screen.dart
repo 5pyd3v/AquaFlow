@@ -9,6 +9,7 @@ import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../domain/entities/customer_ledger_entity.dart';
 import '../../domain/entities/payment_transaction_entity.dart';
 import '../providers/payment_providers.dart';
+import '../widgets/payment_type_style.dart';
 import 'receipt_viewer_screen.dart';
 
 /// Per-customer financial detail: summary, accounting ledger and a
@@ -115,18 +116,20 @@ class _TimelineTile extends StatelessWidget {
   final PaymentTransactionEntity txn;
   const _TimelineTile({required this.txn});
 
-  (Color, IconData, String) get _typeMeta => switch (txn.type) {
-        PaymentType.full => (AppColors.success, Icons.check_circle_rounded, 'Full payment'),
-        PaymentType.partial => (AppColors.warning, Icons.pie_chart_rounded, 'Partial payment'),
-        PaymentType.over => (AppColors.info, Icons.account_balance_wallet_rounded, 'Overpayment'),
-        PaymentType.credit => (const Color(0xFF7C3AED), Icons.card_giftcard_rounded, 'Credit applied'),
-        PaymentType.refund => (AppColors.error, Icons.reply_rounded, 'Refund'),
-        PaymentType.adjustment => (AppColors.textSecondary, Icons.tune_rounded, 'Adjustment'),
+  String get _label => switch (txn.type) {
+        PaymentType.full => 'Full payment',
+        PaymentType.partial => 'Partial payment',
+        PaymentType.over => 'Overpayment',
+        PaymentType.credit => 'Credit applied',
+        PaymentType.refund => 'Refund',
+        PaymentType.adjustment => 'Adjustment',
       };
 
   @override
   Widget build(BuildContext context) {
-    final (color, icon, label) = _typeMeta;
+    final color = txn.type.color;
+    final icon = txn.type.icon;
+    final label = _label;
     final deleted = txn.status == PaymentTxnStatus.deleted;
 
     return AppCard(

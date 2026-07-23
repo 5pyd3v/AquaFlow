@@ -7,7 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
-import '../../../cart/presentation/providers/cart_provider.dart';
+import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../domain/entities/product_entity.dart';
 import '../providers/catalog_providers.dart';
 

@@ -80,43 +80,53 @@ class RiderRepositoryImpl implements RiderRepository {
   @override
   Future<Result<RiderStatsEntity>> getStats(String riderId) async {
     try {
-      final riderRow = await _client
-          .from(SupabaseConfig.riders)
-          .select('rating, total_deliveries, vendor_id')
-          .eq('id', riderId)
-          .single();
-
       final todayStart =
           DateTime.now().toUtc().copyWith(hour: 0, minute: 0, second: 0, microsecond: 0, millisecond: 0);
 
-      final todaysOrders = await _client
-          .from(SupabaseConfig.orders)
-          .select('id')
-          .eq('rider_id', riderId)
-          .eq('status', 'delivered')
-          .gte('delivered_at', todayStart.toIso8601String());
+      // Four independent reads, keyed only off riderId — run concurrently
+      // rather than as a sequential waterfall of round trips.
+      final results = await Future.wait<dynamic>([
+        _client
+            .from(SupabaseConfig.riders)
+            .select('rating, total_deliveries, vendor_id')
+            .eq('id', riderId)
+            .single(),
+        _client
+            .from(SupabaseConfig.orders)
+            .select('id')
+            .eq('rider_id', riderId)
+            .eq('status', 'delivered')
+            .gte('delivered_at', todayStart.toIso8601String()),
+        // COD financials — get total collected from payment_transactions (actual cash collected)
+        // This ensures partial payments are correctly tracked. Refunds no
+        // longer mutate the original row's amount (migration 0027), so
+        // 'refund' rows must be included here and subtracted below or a
+        // refunded/reallocated amount keeps counting as still collected.
+        _client
+            .from(SupabaseConfig.paymentTransactions)
+            .select('amount, payment_type')
+            .eq('rider_id', riderId)
+            .eq('status', 'active')
+            .inFilter('payment_type', ['full', 'partial', 'over', 'refund']),
+        // Get verified + pending from settlements
+        _client
+            .from(SupabaseConfig.codSettlements)
+            .select('amount, status')
+            .eq('rider_id', riderId),
+      ]);
+      final riderRow = results[0] as Map<String, dynamic>;
+      final todaysOrders = results[1];
+      final paymentTransactions = results[2];
+      final settlements = results[3];
 
       final todaysCount = (todaysOrders as List).length;
 
-      // COD financials — get total collected from payment_transactions (actual cash collected)
-      // This ensures partial payments are correctly tracked
-      final paymentTransactions = await _client
-          .from(SupabaseConfig.paymentTransactions)
-          .select('amount')
-          .eq('rider_id', riderId)
-          .eq('status', 'active')
-          .inFilter('payment_type', ['full', 'partial', 'over']);
-
       double totalCodCollected = 0;
       for (final txn in (paymentTransactions as List)) {
-        totalCodCollected += (txn['amount'] as num?)?.toDouble() ?? 0;
+        final amount = (txn['amount'] as num?)?.toDouble() ?? 0;
+        totalCodCollected += txn['payment_type'] == 'refund' ? -amount : amount;
       }
-
-      // Get verified + pending from settlements
-      final settlements = await _client
-          .from(SupabaseConfig.codSettlements)
-          .select('amount, status')
-          .eq('rider_id', riderId);
+      if (totalCodCollected < 0) totalCodCollected = 0;
 
       double totalVerified = 0;
       double totalPending = 0;

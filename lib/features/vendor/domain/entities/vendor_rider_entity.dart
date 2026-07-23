@@ -1,29 +1,8 @@
 import 'package:equatable/equatable.dart';
 
-enum RiderStatus {
-  offline,
-  available,
-  onDelivery,
-  suspended;
+import '../../../../core/constants/rider_status.dart';
 
-  String get dbValue => switch (this) {
-        RiderStatus.offline => 'offline',
-        RiderStatus.available => 'available',
-        RiderStatus.onDelivery => 'on_delivery',
-        RiderStatus.suspended => 'suspended',
-      };
-
-  String get label => switch (this) {
-        RiderStatus.offline => 'Offline',
-        RiderStatus.available => 'Available',
-        RiderStatus.onDelivery => 'On Delivery',
-        RiderStatus.suspended => 'Suspended',
-      };
-
-  static RiderStatus fromDbValue(String value) {
-    return RiderStatus.values.firstWhere((s) => s.dbValue == value, orElse: () => RiderStatus.offline);
-  }
-}
+export '../../../../core/constants/rider_status.dart' show RiderStatus;
 
 class VendorRiderEntity extends Equatable {
   final String id;

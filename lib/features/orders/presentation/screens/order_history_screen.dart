@@ -7,7 +7,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shadows.dart';
 import '../../../../shared/extensions/datetime_extensions.dart';
 import '../../../../shared/extensions/num_extensions.dart';
-import '../../../../shared/widgets/cards/app_card.dart';
 import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../../../shared/widgets/misc/gradient_hero_header.dart';
@@ -47,33 +46,24 @@ class OrderHistoryScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: RefreshIndicator(
+          color: AppColors.primary,
           onRefresh: () async => ref.invalidate(orderHistoryProvider),
           child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: GradientHeroHeader(
                     child: _HeaderContent(orders: ordersAsync.valueOrNull),
                   ),
                 ),
               ),
               SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 44,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                    children: _OrderFilter.values
-                        .map((f) => Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _FilterChip(
-                                label: f.label,
-                                isSelected: filter == f,
-                                onTap: () => ref.read(_orderFilterProvider.notifier).state = f,
-                              ),
-                            ))
-                        .toList(),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: _SegmentedFilter(
+                    selected: filter,
+                    onChanged: (f) => ref.read(_orderFilterProvider.notifier).state = f,
                   ),
                 ),
               ),
@@ -112,12 +102,45 @@ class OrderHistoryScreen extends ConsumerWidget {
                       ),
                     );
                   }
+                  final sections = _groupByDate(filtered);
                   return SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                    sliver: SliverList.separated(
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) => _OrderTile(order: filtered[index]),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    sliver: SliverList.builder(
+                      itemCount: sections.fold<int>(0, (n, s) => n + s.orders.length + 1),
+                      itemBuilder: (context, flatIndex) {
+                        var i = flatIndex;
+                        for (final section in sections) {
+                          if (i == 0) {
+                            return Padding(
+                              padding: EdgeInsets.only(top: section == sections.first ? 0 : 20, bottom: 10, left: 4),
+                              child: Text(
+                                section.label,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textTertiary,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            );
+                          }
+                          i--;
+                          if (i < section.orders.length) {
+                            final order = section.orders[i];
+                            final isLast = i == section.orders.length - 1;
+                            return Padding(
+                              padding: EdgeInsets.only(bottom: isLast ? 0 : 1),
+                              child: _OrderRow(
+                                order: order,
+                                isFirst: i == 0,
+                                isLast: isLast,
+                              ),
+                            );
+                          }
+                          i -= section.orders.length;
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
                   );
                 },
@@ -128,6 +151,29 @@ class OrderHistoryScreen extends ConsumerWidget {
       ),
     );
   }
+
+  List<_DateSection> _groupByDate(List<OrderEntity> orders) {
+    final sections = <_DateSection>[];
+    for (final order in orders) {
+      final label = order.createdAt.isToday
+          ? 'Today'
+          : order.createdAt.isYesterday
+              ? 'Yesterday'
+              : order.createdAt.toDayMonthYear;
+      if (sections.isNotEmpty && sections.last.label == label) {
+        sections.last.orders.add(order);
+      } else {
+        sections.add(_DateSection(label, [order]));
+      }
+    }
+    return sections;
+  }
+}
+
+class _DateSection {
+  final String label;
+  final List<OrderEntity> orders;
+  _DateSection(this.label, this.orders);
 }
 
 class _HeaderContent extends StatelessWidget {
@@ -138,6 +184,10 @@ class _HeaderContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final activeCount = orders?.where((o) => !o.status.isTerminal).length ?? 0;
     final total = orders?.length ?? 0;
+    final totalSpend = orders
+            ?.where((o) => o.status != OrderStatus.cancelled && o.status != OrderStatus.rejected)
+            .fold<double>(0, (sum, o) => sum + o.amountPaid) ??
+        0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -155,144 +205,216 @@ class _HeaderContent extends StatelessWidget {
             const SizedBox(width: 12),
             const Expanded(
               child: Text('My Orders',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20)),
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 20, letterSpacing: -0.3)),
             ),
           ],
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 20),
         Row(
           children: [
-            Expanded(child: _statTile('$total', 'Total orders')),
-            Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.2)),
+            Expanded(child: _statTile('$total', 'Orders')),
+            _statDivider(),
             Expanded(child: _statTile('$activeCount', 'In progress')),
+            _statDivider(),
+            Expanded(child: _statTile(totalSpend.toCurrency, 'Total spent')),
           ],
         ),
       ],
     );
   }
+
+  Widget _statDivider() => Container(width: 1, height: 30, color: Colors.white.withValues(alpha: 0.18));
 
   Widget _statTile(String value, String label) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w800, fontSize: 24, letterSpacing: -0.5)),
-        const SizedBox(height: 2),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+                color: Colors.white, fontWeight: FontWeight.w800, fontSize: 19, letterSpacing: -0.4)),
+        const SizedBox(height: 3),
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 11.5)),
       ],
     );
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
+/// A single rounded track with an animated sliding highlight behind the
+/// selected label — the transaction-filter pattern used by banking apps
+/// (Revolut, Wise) rather than a row of separately-floating pill chips.
+class _SegmentedFilter extends StatelessWidget {
+  final _OrderFilter selected;
+  final ValueChanged<_OrderFilter> onChanged;
+  const _SegmentedFilter({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
-          boxShadow: isSelected ? AppShadows.brand(opacity: 0.22) : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
+    final options = _OrderFilter.values;
+    final index = options.indexOf(selected);
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final segmentWidth = constraints.maxWidth / options.length;
+          return Stack(
+            children: [
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                left: segmentWidth * index,
+                width: segmentWidth,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: AppShadows.card,
+                  ),
+                ),
+              ),
+              Row(
+                children: options.map((f) {
+                  final isSelected = f == selected;
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onChanged(f),
+                      child: SizedBox(
+                        height: 38,
+                        child: Center(
+                          child: Text(
+                            f.label,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.visible,
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _OrderTile extends StatelessWidget {
+/// Bank-statement-style transaction row: merchant initial, name +
+/// status/time on two lines, amount emphasized on the right. Adjacent
+/// rows within the same date section share one card with hairline
+/// dividers, like a real statement, instead of each floating separately.
+class _OrderRow extends StatelessWidget {
   final OrderEntity order;
-  const _OrderTile({required this.order});
+  final bool isFirst;
+  final bool isLast;
+  const _OrderRow({required this.order, required this.isFirst, required this.isLast});
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      radius: 18,
-      padding: const EdgeInsets.all(14),
-      onTap: () => context.pushNamed(
-        RouteNames.orderTracking,
-        pathParameters: {'orderId': order.id},
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final radius = BorderRadius.vertical(
+      top: Radius.circular(isFirst ? 18 : 0),
+      bottom: Radius.circular(isLast ? 18 : 0),
+    );
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: () => context.pushNamed(
+          RouteNames.orderTracking,
+          pathParameters: {'orderId': order.id},
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: AppColors.border),
+            boxShadow: isFirst ? AppShadows.card : null,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: order.status.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(_statusIcon(order.status), color: order.status.color, size: 20),
+                child: Icon(_statusIcon(order.status), color: order.status.color, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('#${order.orderNumber}',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                    const SizedBox(height: 2),
-                    Text(order.vendorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12.5)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(order.vendorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
+                        ),
+                        Text(order.createdAt.toTime,
+                            style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          margin: const EdgeInsets.only(right: 5),
+                          decoration: BoxDecoration(color: order.status.color, shape: BoxShape.circle),
+                        ),
+                        Flexible(
+                          child: Text(order.status.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: order.status.color, fontWeight: FontWeight.w600)),
+                        ),
+                        Text(' · #${order.orderNumber}',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                      ],
+                    ),
+                    if (order.outstandingAmount > 0 || order.isRefunded) ...[
+                      const SizedBox(height: 6),
+                      _PaymentBadge(order: order),
+                    ],
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: order.status.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(order.status.label,
-                    style: TextStyle(color: order.status.color, fontSize: 11, fontWeight: FontWeight.w700)),
-              ),
-            ],
-          ),
-          const Divider(height: 22),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Icon(Icons.schedule_rounded, size: 13, color: AppColors.textTertiary),
-                  const SizedBox(width: 4),
-                  Text(order.createdAt.friendlyLabel,
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
-                  Text(' · ${order.items.length} item${order.items.length == 1 ? '' : 's'}',
-                      style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary)),
+                  Text(order.totalAmount.toCurrency,
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  const Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textTertiary),
                 ],
               ),
-              Text(order.totalAmount.toCurrency,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.primary)),
             ],
           ),
-          if (order.outstandingAmount > 0 || order.isRefunded) ...[
-            const SizedBox(height: 10),
-            _PaymentBadge(order: order),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -322,17 +444,17 @@ class _PaymentBadge extends StatelessWidget {
         : (AppColors.warning, '${order.outstandingAmount.toCurrency} due');
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(order.isRefunded ? Icons.reply_rounded : Icons.schedule_rounded, size: 13, color: color),
-          const SizedBox(width: 5),
-          Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+          Icon(order.isRefunded ? Icons.reply_rounded : Icons.schedule_rounded, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(text, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
         ],
       ),
     );

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shadows.dart';
 import '../../../../shared/extensions/num_extensions.dart';
-import '../../../cart/presentation/providers/cart_provider.dart';
+import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../domain/entities/product_entity.dart';
 import '../providers/catalog_providers.dart';
 

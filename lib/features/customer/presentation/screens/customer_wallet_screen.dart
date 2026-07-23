@@ -29,6 +29,7 @@ class CustomerWalletScreen extends ConsumerWidget {
         ),
       ),
       body: RefreshIndicator(
+        color: AppColors.primary,
         onRefresh: () async => ref.invalidate(customerWalletSummaryProvider),
         child: walletAsync.when(
           loading: () => ListView(
@@ -56,23 +57,48 @@ class CustomerWalletScreen extends ConsumerWidget {
                   orderCount: wallet.pendingOrderCount,
                 ),
               ],
-              const SizedBox(height: 20),
-              Text('Transaction History',
-                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 22),
+              const Text('Transaction History',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: -0.2)),
               const SizedBox(height: 12),
               if (wallet.transactions.isEmpty)
                 _emptyTransactions()
               else
-                ...wallet.transactions.map(
-                    (t) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _TransactionTile(transaction: t),
-                    )),
+                ..._buildSections(wallet.transactions),
             ],
           ),
         ),
       ),
     );
+  }
+
+  List<Widget> _buildSections(List<WalletTransactionEntity> transactions) {
+    final sections = <MapEntry<String, List<WalletTransactionEntity>>>[];
+    for (final t in transactions) {
+      final label = t.createdAt.isToday
+          ? 'Today'
+          : t.createdAt.isYesterday
+              ? 'Yesterday'
+              : t.createdAt.toDayMonthYear;
+      if (sections.isNotEmpty && sections.last.key == label) {
+        sections.last.value.add(t);
+      } else {
+        sections.add(MapEntry(label, [t]));
+      }
+    }
+
+    final widgets = <Widget>[];
+    for (var s = 0; s < sections.length; s++) {
+      final section = sections[s];
+      widgets.add(Padding(
+        padding: EdgeInsets.only(top: s == 0 ? 0 : 18, bottom: 8, left: 4),
+        child: Text(section.key,
+            style: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textTertiary, letterSpacing: 0.2)),
+      ));
+      widgets.add(_LedgerCard(transactions: section.value));
+    }
+    return widgets;
   }
 
   Widget _emptyTransactions() {
@@ -204,31 +230,53 @@ class _OutstandingBanner extends StatelessWidget {
   }
 }
 
-class _TransactionTile extends StatelessWidget {
+/// One connected card per date section with hairline dividers between
+/// entries — matches the statement-style ledger used on Order History /
+/// Order Tracking, instead of each transaction floating in its own card.
+class _LedgerCard extends StatelessWidget {
+  final List<WalletTransactionEntity> transactions;
+  const _LedgerCard({required this.transactions});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < transactions.length; i++) ...[
+            if (i > 0) const Divider(height: 1, indent: 58, color: AppColors.divider),
+            _TransactionRow(transaction: transactions[i]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionRow extends StatelessWidget {
   final WalletTransactionEntity transaction;
-  const _TransactionTile({required this.transaction});
+  const _TransactionRow({required this.transaction});
 
   @override
   Widget build(BuildContext context) {
     final isCredit = transaction.isCredit;
-    final color = isCredit ? const Color(0xFF10B981) : AppColors.error;
-    final icon = isCredit
-        ? Icons.add_circle_outline_rounded
-        : Icons.remove_circle_outline_rounded;
-    final sign = isCredit ? '+' : '-';
+    final color = isCredit ? AppColors.success : AppColors.error;
+    final icon = isCredit ? Icons.add_rounded : Icons.remove_rounded;
+    final sign = isCredit ? '+' : '−';
 
-    return AppCard(
-      radius: 14,
-      padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
             child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: 12),
@@ -240,20 +288,20 @@ class _TransactionTile extends StatelessWidget {
                   transaction.description ?? (isCredit ? 'Credit received' : 'Credit used'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Row(
                   children: [
                     Text(
-                      transaction.createdAt.friendlyLabel,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                      transaction.createdAt.toTime,
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
                     ),
                     if (transaction.orderNumber != null) ...[
-                      const Text(' • ', style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                      const Text(' · ', style: TextStyle(color: AppColors.textTertiary, fontSize: 11.5)),
                       Text(
                         '#${transaction.orderNumber}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
                       ),
                     ],
                   ],
@@ -261,6 +309,7 @@ class _TransactionTile extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             '$sign${transaction.amount.toCurrency}',
             style: TextStyle(

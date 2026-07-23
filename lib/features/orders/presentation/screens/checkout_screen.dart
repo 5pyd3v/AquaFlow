@@ -4,12 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:collection/collection.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../../core/routes/route_names.dart';
+import '../../../../core/services/logger_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../addresses/domain/entities/address_entity.dart';
 import '../../../addresses/presentation/providers/address_providers.dart';
-import '../../../cart/presentation/providers/cart_provider.dart';
+import '../../../cart/presentation/providers/cart_providers.dart';
 import '../../../payments/presentation/providers/payment_providers.dart';
 import '../providers/order_providers.dart';
 
@@ -244,7 +245,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         // must never block navigation to tracking.
         try {
           await ref.read(paymentRepositoryProvider).applyCustomerCredit(orderId: order.id);
-        } catch (_) {}
+        } catch (e) {
+          AppLogger.warning('Failed to auto-apply wallet credit to order ${order.id}', e);
+        }
         if (!context.mounted) return;
         context.pushReplacementNamed(
           RouteNames.orderTracking,

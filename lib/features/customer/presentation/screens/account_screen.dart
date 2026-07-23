@@ -6,6 +6,7 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/widgets/cards/app_card.dart';
+import '../../../../shared/widgets/dialogs/confirm_sign_out_dialog.dart';
 import '../../../../shared/widgets/misc/gradient_hero_header.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 
@@ -105,23 +106,10 @@ class AccountScreen extends ConsumerWidget {
   }
 
   void _confirmSignOut(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Sign out?'),
-        content: const Text('You can sign back in anytime with the same phone number or email.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              ref.read(authControllerProvider.notifier).signOut();
-            },
-            child: const Text('Sign Out', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+    showSignOutConfirmDialog(
+      context,
+      message: 'You can sign back in anytime with the same phone number or email.',
+      onConfirm: () => ref.read(authControllerProvider.notifier).signOut(),
     );
   }
 }

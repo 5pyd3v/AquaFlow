@@ -8,7 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
-import '../providers/cart_provider.dart';
+import '../providers/cart_providers.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});

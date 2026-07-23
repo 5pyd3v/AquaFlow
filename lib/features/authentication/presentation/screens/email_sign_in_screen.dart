@@ -5,6 +5,7 @@ import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_shadows.dart';
 import '../../../../core/utils/validators.dart';
+import '../../../../shared/widgets/buttons/back_icon_button.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/inputs/app_text_field.dart';
 import '../providers/auth_providers.dart';
@@ -185,20 +186,7 @@ class _AuthTopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 4),
       child: Row(
         children: [
-          IconButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary, size: 20),
-            ),
-          ),
+          BackIconButton(onPressed: () => Navigator.of(context).maybePop()),
           const SizedBox(width: 4),
           const Text(
             'Sign In',

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../../core/services/location_service.dart';
+import '../../../../core/services/logger_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -86,7 +87,9 @@ class _AddAddressScreenState extends ConsumerState<AddAddressScreen> {
           _addressController.text = parts;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.debug('Reverse geocoding failed for ${point.latitude},${point.longitude}', e);
+    }
     if (mounted) setState(() => _resolving = false);
   }
 

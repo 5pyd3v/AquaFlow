@@ -37,15 +37,6 @@ final passwordRecoveryProvider = StreamProvider<bool>((ref) {
   return repo.passwordRecoveryChanges;
 });
 
-/// Convenience derived providers used by guards/UI.
-final currentRoleProvider = Provider<UserRole?>((ref) {
-  return ref.watch(authStateProvider).valueOrNull?.role;
-});
-
-final isAuthenticatedProvider = Provider<bool>((ref) {
-  return ref.watch(authStateProvider).valueOrNull != null;
-});
-
 /// Async action controller for every auth screen (phone OTP flow,
 /// email/password, Google, sign-out). Exposes a `Result`-shaped
 /// AsyncValue so screens can pattern-match failures without duplicating

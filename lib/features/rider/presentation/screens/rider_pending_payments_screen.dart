@@ -793,9 +793,9 @@ class _CollectPendingSheetState extends ConsumerState<_CollectPendingSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Collect Payment',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.3,
@@ -830,9 +830,9 @@ class _CollectPendingSheetState extends ConsumerState<_CollectPendingSheet> {
             ],
           ),
           const SizedBox(height: 4),
-          Text(
+          const Text(
             'Total Pending Debt',
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textTertiary,
               fontSize: 12,
               fontWeight: FontWeight.w600,

@@ -25,7 +25,24 @@
       "Bash(flutter devices *)",
       "Skill(run)",
       "Skill(run:*)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8765)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8765)",
+      "Bash(dart run *)",
+      "Bash(grep -rn \"^\\\\s*//.*;\\\\s*$\" lib --include=\"*.dart\")",
+      "Bash(git mv *)",
+      "Bash(awk '/Future<Result</{name=$0; count=0; buf=\"\"} /await _client/{count++} /^  }$/{if\\(count>=3\\) print count, name; count=0}' lib/features/payments/data/repositories/payment_repository_impl.dart lib/features/authentication/data/repositories/auth_repository_impl.dart lib/features/customer/data/repositories/catalog_repository_impl.dart lib/features/settlements/data/repositories/settlement_repository_impl.dart lib/features/addresses/data/repositories/address_repository_impl.dart lib/features/orders/data/repositories/order_repository_impl.dart)",
+      "Bash(grep -c '^\\\\$\\\\$;' supabase/migrations/0027_refund_history_and_outstanding_consistency_fix.sql)",
+      "Bash(sort -k2)",
+      "Bash(awk '/^create policy/{p=$0} /^  on public\\\\./{print p, $0}' 05_rls_policies.sql)",
+      "Bash(awk '$1>1')",
+      "Bash(grep -o '\\\\$\\\\$' 03_functions.sql)",
+      "Bash(grep -c '^\\\\$\\\\$;' 03_functions.sql)",
+      "Bash(grep -c 'as \\\\$\\\\$' 03_functions.sql)",
+      "Bash(grep -n payment_amendment_requests -A 20 __TRACKED_VAR__/supabase/consolidated_schema/01_tables.sql)",
+      "Bash(sed -i 's/-- inferred-necessary \\(see flagged uncertainty above\\) --/-- added by migration 0029 \\(fixes a live bug: resolve_payment_amendment\\\\n  -- started writing these in 0026 with no ALTER TABLE ever adding them\\)/' __TRACKED_VAR__/supabase/consolidated_schema/01_tables.sql)",
+      "Bash(sed -n 425,446p __TRACKED_VAR__/supabase/consolidated_schema/01_tables.sql)",
+      "Bash(cd \"C:\\\\Users\\\\spydev\\\\Desktop\\\\Water Management System\\\\aquaflow\" && mkdir -p supabase/consolidated_schema && cp \".claude/worktrees/agent-a95545f94de2fe217/supabase/consolidated_schema/\"*.sql \".claude/worktrees/agent-a95545f94de2fe217/supabase/consolidated_schema/\"*.md supabase/consolidated_schema/ && ls -la supabase/consolidated_schema/)",
+      "Bash(git worktree *)",
+      "Bash(git branch *)"
     ]
   }
 }

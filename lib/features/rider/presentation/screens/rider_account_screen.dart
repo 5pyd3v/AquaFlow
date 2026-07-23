@@ -8,6 +8,7 @@ import '../../../../core/utils/validators.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/cards/app_card.dart';
 import '../../../../shared/widgets/inputs/app_text_field.dart';
+import '../../../../shared/widgets/dialogs/confirm_sign_out_dialog.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../domain/entities/rider_profile_entity.dart';
@@ -77,23 +78,10 @@ class RiderAccountScreen extends ConsumerWidget {
   }
 
   void _confirmSignOut(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Sign out?'),
-        content: const Text('Your shift will end and you can sign back in anytime.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              ref.read(authControllerProvider.notifier).signOut();
-            },
-            child: const Text('Sign Out', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+    showSignOutConfirmDialog(
+      context,
+      message: 'Your shift will end and you can sign back in anytime.',
+      onConfirm: () => ref.read(authControllerProvider.notifier).signOut(),
     );
   }
 }

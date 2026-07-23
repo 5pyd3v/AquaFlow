@@ -12,6 +12,7 @@ import '../../../../shared/widgets/loaders/state_views.dart';
 import '../../../../shared/widgets/misc/gradient_hero_header.dart';
 import '../../../payments/domain/entities/payment_transaction_entity.dart';
 import '../../../payments/presentation/providers/payment_providers.dart';
+import '../../../payments/presentation/widgets/payment_type_style.dart';
 import '../../domain/entities/order_entity.dart';
 import '../providers/order_providers.dart';
 import '../providers/rating_providers.dart';
@@ -492,13 +493,24 @@ class _OrderPaymentHistory extends ConsumerWidget {
             ),
           );
         }
-        return Column(
-          children: payments
-              .map((txn) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: _PaymentEventTile(txn: txn),
-                  ))
-              .toList(),
+        // A single connected ledger card with hairline dividers between
+        // entries, like a real bank statement, instead of each payment
+        // event floating in its own separate card.
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < payments.length; i++) ...[
+                if (i > 0) const Divider(height: 1, indent: 58, color: AppColors.divider),
+                _PaymentEventTile(txn: payments[i]),
+              ],
+            ],
+          ),
         );
       },
     );
@@ -509,38 +521,49 @@ class _PaymentEventTile extends StatelessWidget {
   final PaymentTransactionEntity txn;
   const _PaymentEventTile({required this.txn});
 
-  (Color, IconData, String) get _typeMeta => switch (txn.type) {
-        PaymentType.full => (AppColors.success, Icons.check_circle_rounded, 'Full payment'),
-        PaymentType.partial => (AppColors.warning, Icons.pie_chart_rounded, 'Partial payment'),
-        PaymentType.over => (AppColors.info, Icons.account_balance_wallet_rounded, 'Overpayment'),
-        PaymentType.credit => (const Color(0xFF7C3AED), Icons.card_giftcard_rounded, 'Wallet credit applied'),
-        PaymentType.refund => (AppColors.error, Icons.reply_rounded, 'Refund'),
-        PaymentType.adjustment => (AppColors.textSecondary, Icons.tune_rounded, 'Adjustment'),
+  String get _label => switch (txn.type) {
+        PaymentType.full => 'Full payment',
+        PaymentType.partial => 'Partial payment',
+        PaymentType.over => 'Overpayment',
+        PaymentType.credit => 'Wallet credit applied',
+        PaymentType.refund => 'Refund',
+        PaymentType.adjustment => 'Adjustment',
       };
+
+  bool get _isOutflow => txn.type == PaymentType.refund;
 
   @override
   Widget build(BuildContext context) {
-    final (color, icon, label) = _typeMeta;
+    final color = txn.type.color;
+    final icon = txn.type.icon;
+    final label = _label;
     final deleted = txn.status == PaymentTxnStatus.deleted;
+    final sign = _isOutflow ? '−' : '+';
 
-    return AppCard(
-      radius: 14,
-      padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 16),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    Flexible(
+                      child: Text(label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                    ),
                     if (deleted)
                       Container(
                         margin: const EdgeInsets.only(left: 6),
@@ -554,9 +577,10 @@ class _PaymentEventTile extends StatelessWidget {
                       ),
                   ],
                 ),
+                const SizedBox(height: 2),
                 Text(
                   txn.createdAt.friendlyLabel,
-                  style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                  style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
                 ),
                 if (txn.notes != null && txn.notes!.isNotEmpty)
                   Padding(
@@ -566,12 +590,13 @@ class _PaymentEventTile extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
-            txn.amount.toCurrency,
+            '$sign${txn.amount.toCurrency}',
             style: TextStyle(
               fontWeight: FontWeight.w800,
               fontSize: 14,
-              color: deleted ? AppColors.textTertiary : color,
+              color: deleted ? AppColors.textTertiary : (_isOutflow ? AppColors.error : AppColors.success),
               decoration: deleted ? TextDecoration.lineThrough : null,
             ),
           ),

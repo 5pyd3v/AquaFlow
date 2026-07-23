@@ -3,6 +3,7 @@ import '../../../../core/config/supabase_config.dart';
 import '../../../../core/constants/order_status.dart';
 import '../../../../core/errors/error_mapper.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/services/logger_service.dart';
 import '../../../../core/utils/result.dart';
 import '../../../customer/data/models/product_model.dart';
 import '../../../customer/domain/entities/product_entity.dart';
@@ -78,36 +79,44 @@ class VendorRepositoryImpl implements VendorRepository {
     try {
       final todayStart = DateTime.now().toUtc().copyWith(hour: 0, minute: 0, second: 0, microsecond: 0, millisecond: 0);
 
-      final ordersToday = await _client
-          .from(SupabaseConfig.orders)
-          .select('id, status, total_amount, payment_method')
-          .eq('vendor_id', vendorId)
-          .gte('created_at', todayStart.toIso8601String());
-
-      final pendingOrders = await _client
-          .from(SupabaseConfig.orders)
-          .select('id')
-          .eq('vendor_id', vendorId)
-          .eq('status', 'pending');
-
-      // Orders terminate at 'delivered' (rider drop-off) and optionally
-      // roll up to 'completed' after COD settlement, so both count as
-      // successfully completed for the vendor's stats.
-      final completedOrders = await _client
-          .from(SupabaseConfig.orders)
-          .select('id')
-          .eq('vendor_id', vendorId)
-          .inFilter('status', ['delivered', 'completed']);
-
-      final products = await _client
-          .from(SupabaseConfig.products)
-          .select('id, stock_quantity')
-          .eq('vendor_id', vendorId);
-
-      final riders = await _client
-          .from(SupabaseConfig.riders)
-          .select('id')
-          .eq('vendor_id', vendorId);
+      // None of these five queries depend on each other's results, so they
+      // run concurrently instead of as a sequential waterfall of round trips
+      // — same data, same error behavior (the first failure still surfaces
+      // to the outer catch below), just less wall-clock time to load the
+      // dashboard.
+      final results = await Future.wait([
+        _client
+            .from(SupabaseConfig.orders)
+            .select('id, status, total_amount, payment_method')
+            .eq('vendor_id', vendorId)
+            .gte('created_at', todayStart.toIso8601String()),
+        _client
+            .from(SupabaseConfig.orders)
+            .select('id')
+            .eq('vendor_id', vendorId)
+            .eq('status', 'pending'),
+        // Orders terminate at 'delivered' (rider drop-off) and optionally
+        // roll up to 'completed' after COD settlement, so both count as
+        // successfully completed for the vendor's stats.
+        _client
+            .from(SupabaseConfig.orders)
+            .select('id')
+            .eq('vendor_id', vendorId)
+            .inFilter('status', ['delivered', 'completed']),
+        _client
+            .from(SupabaseConfig.products)
+            .select('id, stock_quantity')
+            .eq('vendor_id', vendorId),
+        _client
+            .from(SupabaseConfig.riders)
+            .select('id')
+            .eq('vendor_id', vendorId),
+      ]);
+      final ordersToday = results[0];
+      final pendingOrders = results[1];
+      final completedOrders = results[2];
+      final products = results[3];
+      final riders = results[4];
 
       final todaysRows = ordersToday as List;
       // Revenue = sum of verified COD settlements today + non-COD
@@ -131,7 +140,11 @@ class VendorRepositoryImpl implements VendorRepository {
             .gte('verified_at', todayStart.toIso8601String());
         codRevenue = (codRows as List).fold<double>(
             0, (sum, row) => sum + ((row['amount'] as num?)?.toDouble() ?? 0));
-      } catch (_) {}
+      } catch (e) {
+        // Falls back to 0 — a genuinely empty result set looks the same as a
+        // query error here, but logging at least surfaces the latter.
+        AppLogger.warning('Failed to load today\'s COD revenue for vendor $vendorId', e);
+      }
 
       final todaysRevenue = nonCodRevenue + codRevenue;
 
@@ -146,18 +159,28 @@ class VendorRepositoryImpl implements VendorRepository {
 
       // Pending settlement = unsettled active cash payments (riders haven't
       // handed over yet). Falls back to 0 if payment_transactions has no rows.
+      // Refund rows are always settled = false (only 'full'/'partial'/'over'
+      // rows ever get flipped to settled), so they must be subtracted here
+      // explicitly or refunded/reallocated cash keeps counting as unsettled
+      // forever — refunds no longer mutate the original row's amount
+      // (see migration 0027), so this can't rely on that anymore.
       int pendingSettlement = 0;
       try {
         final unsettledRows = await _client
             .from('payment_transactions')
-            .select('amount')
+            .select('amount, payment_type')
             .eq('vendor_id', vendorId)
             .eq('status', 'active')
             .eq('settled', false)
-            .inFilter('payment_type', ['full', 'partial', 'over']);
-        pendingSettlement = (unsettledRows as List)
-            .fold<int>(0, (sum, row) => sum + ((row['amount'] as num?)?.round() ?? 0));
-      } catch (_) {}
+            .inFilter('payment_type', ['full', 'partial', 'over', 'refund']);
+        pendingSettlement = (unsettledRows as List).fold<int>(0, (sum, row) {
+          final amount = (row['amount'] as num?)?.round() ?? 0;
+          return row['payment_type'] == 'refund' ? sum - amount : sum + amount;
+        });
+        if (pendingSettlement < 0) pendingSettlement = 0;
+      } catch (e) {
+        AppLogger.warning('Failed to load pending settlement for vendor $vendorId', e);
+      }
 
       final productsRows = products as List;
       final lowStockCount = productsRows
