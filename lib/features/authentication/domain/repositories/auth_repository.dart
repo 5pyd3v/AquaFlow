@@ -52,6 +52,13 @@ abstract class AuthRepository {
     required String fullName,
   });
 
+  /// Vendor resets the login PIN for one of their own customers (e.g. the
+  /// customer forgot it). Returns the newly generated 6-digit PIN.
+  Future<Result<String>> resetCustomerPin({
+    required String vendorId,
+    required String customerProfileId,
+  });
+
   /// Creates an account, auto-confirms it, and returns the profile.
   /// For vendor/rider roles the account is created but marked inactive
   /// pending admin approval.

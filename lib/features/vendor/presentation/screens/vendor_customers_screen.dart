@@ -8,6 +8,7 @@ import '../../../../core/theme/app_shadows.dart';
 import '../../../../shared/extensions/num_extensions.dart';
 import '../../../../shared/widgets/loaders/shimmer_loader.dart';
 import '../../../../shared/widgets/loaders/state_views.dart';
+import '../../../authentication/presentation/providers/auth_providers.dart';
 import '../../domain/entities/vendor_customer_entity.dart';
 import '../providers/vendor_providers.dart';
 
@@ -43,6 +44,7 @@ class _VendorCustomersScreenState extends ConsumerState<VendorCustomersScreen> {
   @override
   Widget build(BuildContext context) {
     final customersAsync = ref.watch(vendorCustomersProvider);
+    final vendorId = ref.watch(myVendorProvider).valueOrNull?.id;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -141,8 +143,10 @@ class _VendorCustomersScreenState extends ConsumerState<VendorCustomersScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     itemCount: filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) =>
-                        _CustomerCard(customer: filtered[index]),
+                    itemBuilder: (context, index) => _CustomerCard(
+                      customer: filtered[index],
+                      vendorId: vendorId,
+                    ),
                   ),
                 );
               },
@@ -154,17 +158,121 @@ class _VendorCustomersScreenState extends ConsumerState<VendorCustomersScreen> {
   }
 }
 
-class _CustomerCard extends StatelessWidget {
+class _CustomerCard extends ConsumerWidget {
   final VendorCustomerEntity customer;
-  const _CustomerCard({required this.customer});
+  final String? vendorId;
+  const _CustomerCard({required this.customer, required this.vendorId});
 
   bool get _hasRealEmail =>
       customer.email != null &&
       customer.email!.isNotEmpty &&
       !customer.email!.contains('@pin.aquaflow.app');
 
+  Future<void> _confirmResetPin(BuildContext context, WidgetRef ref) async {
+    final vId = vendorId;
+    if (vId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Reset PIN?'),
+        content: Text(
+          "This generates a new login PIN for ${customer.fullName}. "
+          'Their current PIN will stop working immediately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Reset PIN'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final result = await ref.read(authControllerProvider.notifier).resetCustomerPin(
+          vendorId: vId,
+          customerProfileId: customer.profileId,
+        );
+    if (!context.mounted) return;
+
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failure.message), backgroundColor: AppColors.error),
+      ),
+      (newPin) {
+        ref.invalidate(vendorCustomersProvider);
+        _showNewPinDialog(context, newPin);
+      },
+    );
+  }
+
+  void _showNewPinDialog(BuildContext context, String pin) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('PIN reset'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Share this new login PIN with ${customer.fullName}.',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Center(
+                child: Text(
+                  pin,
+                  style: const TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 10,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: pin));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('PIN copied')),
+              );
+            },
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            label: const Text('Copy PIN'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () => context.pushNamed(
@@ -366,6 +474,18 @@ class _CustomerCard extends StatelessWidget {
                           size: 16, color: AppColors.primary),
                     ),
                   ),
+                Tooltip(
+                  message: 'Reset PIN',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: vendorId == null ? null : () => _confirmResetPin(context, ref),
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.lock_reset_rounded,
+                          size: 18, color: AppColors.textSecondary),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

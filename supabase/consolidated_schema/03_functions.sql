@@ -717,6 +717,57 @@ begin
 end;
 $$;
 
+-- reset_customer_pin (0031) — vendor resets the login PIN for one of their
+-- own customers. Updates both the auth password hash (the PIN doubles as
+-- the customer's Supabase Auth password, see create_pin_customer above) and
+-- public.customers.pin, which the vendor UI displays.
+create or replace function public.reset_customer_pin(
+  p_vendor_id uuid,
+  p_customer_profile_id uuid,
+  p_new_pin text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_caller_vendor_id uuid;
+  v_customer_profile_id uuid;
+begin
+  select id into v_caller_vendor_id
+  from public.vendors
+  where id = p_vendor_id and profile_id = auth.uid();
+
+  if v_caller_vendor_id is null then
+    raise exception 'Not authorized';
+  end if;
+
+  select profile_id into v_customer_profile_id
+  from public.customers
+  where profile_id = p_customer_profile_id and vendor_id = p_vendor_id;
+
+  if v_customer_profile_id is null then
+    return false;
+  end if;
+
+  if p_new_pin is null or length(p_new_pin) <> 6 then
+    raise exception 'PIN must be 6 digits';
+  end if;
+
+  update auth.users
+  set encrypted_password = extensions.crypt(p_new_pin, extensions.gen_salt('bf')),
+      updated_at = now()
+  where id = v_customer_profile_id;
+
+  update public.customers
+  set pin = p_new_pin
+  where profile_id = v_customer_profile_id;
+
+  return true;
+end;
+$$;
+
 -- ----------------------------------------------------------------------------
 -- ORDER LIFECYCLE
 -- ----------------------------------------------------------------------------

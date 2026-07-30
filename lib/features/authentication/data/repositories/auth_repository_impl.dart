@@ -118,8 +118,31 @@ class AuthRepositoryImpl implements AuthRepository {
         ));
       }
 
-      // Sign in immediately — email is already confirmed by the RPC
-      await _client.auth.signInWithPassword(email: email, password: password);
+      // Vendors/riders are created inactive (pending approval) — they
+      // cannot use the app until an admin/vendor approves them. Attempt
+      // an immediate sign-in so the router can show the pending-approval
+      // screen, but if GoTrue rejects it (e.g. NULL token columns on
+      // older Supabase instances cause "Database error querying schema")
+      // that's fine: the account IS created, and the user just needs to
+      // know it's pending.
+      final needsApproval = role == UserRole.vendor || role == UserRole.rider;
+
+      try {
+        await _client.auth.signInWithPassword(email: email, password: password);
+      } catch (signInError) {
+        if (needsApproval) {
+          // Account created successfully but sign-in failed (expected on
+          // some Supabase versions). Return success so the UI shows the
+          // "pending approval" dialog instead of a scary error.
+          AppLogger.warning(
+            'Post-signup sign-in failed for $role (expected if pending approval)',
+            signInError.toString(),
+          );
+          return const Success(SignUpOutcome());
+        }
+        // For customer/admin roles the sign-in must succeed — propagate.
+        rethrow;
+      }
 
       final profile = await refreshProfile();
       return profile.fold(
@@ -145,6 +168,34 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       final profile = await _fetchOrBootstrapProfile(user);
       return Success(profile);
+    } on sb.AuthException catch (e) {
+      // GoTrue "Database error querying schema" means the auth.users row
+      // has NULL token columns (created by our RPC before migration 0030
+      // fixed them). Check if a profile exists with pending-approval
+      // status and give the user a helpful message instead.
+      if (e.message.toLowerCase().contains('database error')) {
+        try {
+          final rows = await _client
+              .from(SupabaseConfig.profiles)
+              .select('role, is_active')
+              .eq('email', email)
+              .limit(1);
+          if ((rows as List).isNotEmpty) {
+            final row = rows.first;
+            final role = row['role'] as String? ?? '';
+            final isActive = row['is_active'] as bool? ?? true;
+            if (!isActive && (role == 'vendor' || role == 'rider')) {
+              return Error(AuthFailure(
+                'Your ${role} account is pending approval. '
+                'You will be able to log in once approved.',
+              ));
+            }
+          }
+        } catch (_) {
+          // Profile lookup failed too — fall through to generic message.
+        }
+      }
+      return Error(ErrorMapper.map(e));
     } catch (e) {
       return Error(ErrorMapper.map(e));
     }
@@ -266,6 +317,29 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       return Success(pin);
+    } catch (e) {
+      return Error(ErrorMapper.map(e));
+    }
+  }
+
+  @override
+  Future<Result<String>> resetCustomerPin({
+    required String vendorId,
+    required String customerProfileId,
+  }) async {
+    try {
+      final newPin = _generatePin();
+      final result = await _client.rpc('reset_customer_pin', params: {
+        'p_vendor_id': vendorId,
+        'p_customer_profile_id': customerProfileId,
+        'p_new_pin': newPin,
+      });
+
+      if (result == null || result == false) {
+        return const Error(AuthFailure('Could not reset PIN. Please try again.'));
+      }
+
+      return Success(newPin);
     } catch (e) {
       return Error(ErrorMapper.map(e));
     }

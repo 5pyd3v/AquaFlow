@@ -181,6 +181,22 @@ class AuthController extends AsyncNotifier<void> {
     return result;
   }
 
+  Future<Result<String>> resetCustomerPin({
+    required String vendorId,
+    required String customerProfileId,
+  }) async {
+    state = const AsyncLoading();
+    final result = await _repo.resetCustomerPin(
+      vendorId: vendorId,
+      customerProfileId: customerProfileId,
+    );
+    state = result.fold(
+      (failure) => AsyncError(failure, StackTrace.current),
+      (_) => const AsyncData(null),
+    );
+    return result;
+  }
+
   Future<void> signOut() async {
     state = const AsyncLoading();
     final result = await _repo.signOut();

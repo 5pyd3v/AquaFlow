@@ -79,3 +79,5 @@ grant execute on function public.get_rider_pending_customers(uuid) to authentica
 grant execute on function public.get_rider_cod_balance(uuid, uuid) to authenticated;
 
 grant execute on function public.collect_pending_payment(uuid, uuid, numeric, text, jsonb, text, text) to authenticated;
+
+grant execute on function public.reset_customer_pin(uuid, uuid, text) to authenticated;

@@ -75,6 +75,11 @@ class ErrorMapper {
     if (lower.contains('already registered')) {
       return 'An account with this phone/email already exists.';
     }
+    if (lower.contains('database error querying schema') ||
+        lower.contains('database error')) {
+      return 'Your account was created but needs admin approval. '
+          'Please try logging in after your account is approved.';
+    }
     return raw;
   }
 

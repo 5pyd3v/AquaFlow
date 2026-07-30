@@ -37,8 +37,8 @@ class PaymentCollectionArgs {
 }
 
 /// Premium payment-collection sheet. Handles full / partial / over
-/// payment, mandatory receipt capture (camera + gallery) for COD, and
-/// commits everything atomically via `complete_delivery_with_payment`.
+/// payment, optional receipt capture (camera + gallery), and commits
+/// everything atomically via `complete_delivery_with_payment`.
 class PaymentCollectionScreen extends ConsumerStatefulWidget {
   final PaymentCollectionArgs args;
   const PaymentCollectionScreen({super.key, required this.args});
@@ -72,11 +72,7 @@ class _PaymentCollectionScreenState extends ConsumerState<PaymentCollectionScree
   int get _remaining => (_outstanding - _enteredAmount).clamp(0, _outstanding);
   int get _excess => (_enteredAmount - _outstanding).clamp(0, _enteredAmount);
 
-  bool get _receiptRequired => widget.args.isCod;
-  bool get _canConfirm =>
-      !_submitting &&
-      _enteredAmount >= 0 &&
-      (!_receiptRequired || _receiptBytes != null);
+  bool get _canConfirm => !_submitting && _enteredAmount >= 0;
 
   Future<void> _pickReceipt(ImageSource source) async {
     try {
@@ -205,15 +201,6 @@ class _PaymentCollectionScreenState extends ConsumerState<PaymentCollectionScree
               onPressed: _canConfirm ? _confirm : null,
               icon: Icons.check_circle_rounded,
             ),
-            if (_receiptRequired && _receiptBytes == null)
-              Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: Text(
-                  'A payment receipt is required to complete a COD delivery.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
-                ),
-              ),
           ],
         ),
       ),
@@ -354,8 +341,11 @@ class _PaymentCollectionScreenState extends ConsumerState<PaymentCollectionScree
         Row(
           children: [
             Text('Payment receipt', style: Theme.of(context).textTheme.titleSmall),
-            if (_receiptRequired)
-              const Text(' *', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w800)),
+            const SizedBox(width: 6),
+            Text(
+              '(optional)',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
+            ),
           ],
         ),
         const SizedBox(height: 8),
