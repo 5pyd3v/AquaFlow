@@ -268,8 +268,11 @@ begin
 end;
 $$;
 
--- create_pin_customer — final version: 0019 (0018 -> 0019, sets all auth
--- token columns to '' to avoid GoTrue's "Database error querying schema").
+-- create_pin_customer — final version: 0030 (0018 -> 0019 -> 0030). Sets all
+-- auth token columns to '' to avoid GoTrue's "Database error querying
+-- schema", and additionally (0030) detects and sets is_sso_user/is_anonymous
+-- when those columns exist on the target Supabase instance's auth.users
+-- (newer GoTrue versions require them non-null).
 create or replace function public.create_pin_customer(
   p_vendor_id uuid,
   p_phone text,
@@ -284,6 +287,8 @@ set search_path = public, pg_temp
 as $$
 declare
   v_uid uuid;
+  v_has_sso_col boolean;
+  v_has_anon_col boolean;
 begin
   select id into v_uid from auth.users where email = p_email limit 1;
   if v_uid is not null then
@@ -291,6 +296,16 @@ begin
   end if;
 
   v_uid := gen_random_uuid();
+
+  select exists(
+    select 1 from information_schema.columns
+    where table_schema = 'auth' and table_name = 'users' and column_name = 'is_sso_user'
+  ) into v_has_sso_col;
+
+  select exists(
+    select 1 from information_schema.columns
+    where table_schema = 'auth' and table_name = 'users' and column_name = 'is_anonymous'
+  ) into v_has_anon_col;
 
   insert into auth.users (
     id,
@@ -331,6 +346,13 @@ begin
     now(),
     now()
   );
+
+  if v_has_sso_col then
+    execute format('update auth.users set is_sso_user = false where id = %L', v_uid);
+  end if;
+  if v_has_anon_col then
+    execute format('update auth.users set is_anonymous = false where id = %L', v_uid);
+  end if;
 
   insert into auth.identities (
     id,
@@ -378,8 +400,8 @@ begin
 end;
 $$;
 
--- create_email_user — final version: 0019 (0018 -> 0019, sets all auth
--- token columns to '' to avoid GoTrue's "Database error querying schema").
+-- create_email_user — final version: 0030 (0018 -> 0019 -> 0030). Same auth
+-- token + is_sso_user/is_anonymous handling as create_pin_customer above.
 create or replace function public.create_email_user(
   p_email text,
   p_password text,
@@ -397,6 +419,8 @@ as $$
 declare
   v_uid uuid;
   v_active boolean;
+  v_has_sso_col boolean;
+  v_has_anon_col boolean;
 begin
   select id into v_uid from auth.users where email = p_email limit 1;
   if v_uid is not null then
@@ -412,6 +436,16 @@ begin
 
   v_uid := gen_random_uuid();
   v_active := p_role not in ('vendor', 'rider');
+
+  select exists(
+    select 1 from information_schema.columns
+    where table_schema = 'auth' and table_name = 'users' and column_name = 'is_sso_user'
+  ) into v_has_sso_col;
+
+  select exists(
+    select 1 from information_schema.columns
+    where table_schema = 'auth' and table_name = 'users' and column_name = 'is_anonymous'
+  ) into v_has_anon_col;
 
   insert into auth.users (
     id,
@@ -452,6 +486,13 @@ begin
     now(),
     now()
   );
+
+  if v_has_sso_col then
+    execute format('update auth.users set is_sso_user = false where id = %L', v_uid);
+  end if;
+  if v_has_anon_col then
+    execute format('update auth.users set is_anonymous = false where id = %L', v_uid);
+  end if;
 
   insert into auth.identities (
     id,

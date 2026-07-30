@@ -1,8 +1,8 @@
 # AquaFlow — Consolidated Schema (generated reference)
 
-**Generated:** 2026-07-23
+**Generated:** 2026-07-23, refreshed 2026-07-31
 **Source:** mechanical extraction from `supabase/migrations/0001` through
-`0028` (28 files, ~6,675 lines), all committed to `main`.
+`0031` (31 files, ~7,230 lines), all committed to `main`.
 
 ## What this is
 
@@ -48,13 +48,14 @@ Run in numeric order on an empty database to build the schema from scratch.
 ## Counts
 
 - **Tables:** 27 (see exclusions below)
-- **Functions:** 51 (`03_functions.sql` has exactly one `create or replace
-  function public.X` per distinct name — verified by grep, no duplicates)
+- **Functions:** 52 (`03_functions.sql` has exactly one `create or replace
+  function public.X` per distinct name — verified by grep, no duplicates).
+  Adds `reset_customer_pin` (0031) on top of the original 51.
 - **Triggers:** 20
 - **RLS policies:** 55 across 27 tables (all policy names are globally
   unique — verified no two tables reuse the same policy name)
 - **Storage policies:** 10 (9 original + `delivery_proofs_public_read` added later)
-- **Grants:** 34 `grant execute` statements (17 more functions — mostly
+- **Grants:** 35 `grant execute` statements (17 more functions — mostly
   trigger functions plus the four RLS helper functions — rely on Postgres's
   default PUBLIC execute privilege instead, since nothing ever revoked it)
 
@@ -91,8 +92,8 @@ in 0017 and never recreated — omitted from `06_storage_and_realtime.sql`.
 | `handle_new_auth_user` | 0003, 0008, 0014, 0016 | 0016 |
 | `ensure_role_subrow` | 0008, 0014 | 0014 |
 | `get_vendor_customers` | 0022, 0023, 0025, 0027 | 0027 |
-| `create_pin_customer` | 0018, 0019 | 0019 |
-| `create_email_user` | 0018, 0019 | 0019 |
+| `create_pin_customer` | 0018, 0019, 0030 | 0030 |
+| `create_email_user` | 0018, 0019, 0030 | 0030 |
 | `process_refund` | 0025, 0026, 0027 | 0027 |
 | `resolve_payment_amendment` | 0024, 0025, 0026, 0027, 0029 | 0029 |
 | `get_rider_cod_balance` | 0015, 0026, 0027 | 0027 |
@@ -184,5 +185,38 @@ payments-related:
    The enum *values* are copied verbatim; only the existence-guard wrapper is
    new.
 
+5. **`0030_fix_gotrue_null_columns.sql`'s one-time data-repair `update
+   auth.users set ... where ... is null` statements are intentionally
+   excluded.** They repair rows that already existed with NULL token/boolean
+   columns on a live database — meaningless on the empty database this
+   reference is meant to bootstrap (there are no rows yet to repair). Only
+   the migration's *schema* changes (the redefined `create_email_user` /
+   `create_pin_customer`, which now write those columns correctly for every
+   newly-created row) are carried into `03_functions.sql`.
+
 No other ambiguities were found — every other function, policy, trigger, and
 table version was unambiguous by "highest migration number wins."
+
+## Changes since initial generation (refreshed 2026-07-31)
+
+The directory was originally generated through migration `0028`. It has
+since been updated in place — not regenerated from scratch — to fold in
+three later migrations:
+
+- **`0029_payment_amendment_missing_columns_fix.sql`** — already covered by
+  the original generation (see Uncertainty #1 above); no further change
+  needed.
+- **`0030_fix_gotrue_null_columns.sql`** — `create_pin_customer` and
+  `create_email_user` in `03_functions.sql` updated to the 0030 bodies,
+  which detect (`information_schema.columns`) and set `is_sso_user` /
+  `is_anonymous` on newer GoTrue installs. Function signatures are
+  unchanged, so `07_grants.sql` needed no update for these two.
+- **`0031_vendor_reset_customer_pin.sql`** — new function
+  `reset_customer_pin(uuid, uuid, text)` added to `03_functions.sql` (under
+  "VENDOR CUSTOMERS") plus its `grant execute` in `07_grants.sql`. Lets a
+  vendor regenerate the login PIN for one of their own customers.
+
+No table, index, trigger, RLS policy, storage, or type changes were
+introduced by 0029-0031 beyond what's listed above (verified by grepping
+each migration for `alter table` / `create policy` / `create index` /
+`create trigger` / `create type`).
