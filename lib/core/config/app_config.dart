@@ -1,3 +1,5 @@
+import '../constants/user_role.dart';
+
 /// Static, non-secret application configuration.
 class AppConfig {
   AppConfig._();
@@ -49,4 +51,29 @@ class AppConfig {
       '$deepLinkScheme://$deepLinkHost/';
   static const String passwordRecoveryUrl =
       '$deepLinkScheme://$deepLinkHost/reset-password';
+
+  // App flavor / fixed role
+  //
+  // Each build of the app (customer / vendor / rider) is compiled with
+  // this set so screens like EmailSignUpScreen know which role they're
+  // for without an in-app picker.
+  //
+  // Run with e.g.:
+  //   flutter run --dart-define=FLAVOR=customer
+  //   flutter run --dart-define=FLAVOR=vendor
+  //   flutter run --dart-define=FLAVOR=rider
+  static const String _flavorString =
+      String.fromEnvironment('FLAVOR', defaultValue: 'customer');
+
+  static UserRole get fixedRole {
+    switch (_flavorString) {
+      case 'vendor':
+        return UserRole.vendor;
+      case 'rider':
+        return UserRole.rider;
+      case 'customer':
+      default:
+        return UserRole.customer;
+    }
+  }
 }

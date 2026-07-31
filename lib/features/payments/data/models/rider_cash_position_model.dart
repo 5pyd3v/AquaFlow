@@ -7,6 +7,7 @@ class RiderCashPositionModel extends RiderCashPositionEntity {
     required super.collected,
     required super.settled,
     required super.pendingSettlement,
+    required super.outstanding,
   });
 
   factory RiderCashPositionModel.fromJson(Map<String, dynamic> json) {
@@ -19,6 +20,7 @@ class RiderCashPositionModel extends RiderCashPositionEntity {
       collected: i('collected'),
       settled: i('settled'),
       pendingSettlement: i('pending_settlement'),
+      outstanding: i('outstanding'),
     );
   }
 }

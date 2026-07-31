@@ -157,29 +157,34 @@ class VendorRepositoryImpl implements VendorRepository {
       }).fold<int>(
           0, (sum, row) => sum + ((row['total_amount'] as num?)?.round() ?? 0));
 
-      // Pending settlement = unsettled active cash payments (riders haven't
-      // handed over yet). Falls back to 0 if payment_transactions has no rows.
-      // Refund rows are always settled = false (only 'full'/'partial'/'over'
-      // rows ever get flipped to settled), so they must be subtracted here
-      // explicitly or refunded/reallocated cash keeps counting as unsettled
-      // forever — refunds no longer mutate the original row's amount
-      // (see migration 0027), so this can't rely on that anymore.
+      // Unsettled = cash physically held by riders.
+      //
+      // This MUST come from `get_vendor_finance_kpis` — the same source the
+      // Finances screen uses — rather than being recomputed here. The old
+      // client-side query summed rows where the `settled` boolean was false
+      // with no rider filter, which is wrong twice over:
+      //   1. Since migration 0032, `settled` deliberately lags on partial
+      //      settlements (only transactions FULLY covered by the verified
+      //      amount get flipped), so a rider who collected 4000 and settled
+      //      3500 showed the whole uncovered transaction rather than the 500
+      //      actually still in hand.
+      //   2. With no `rider_id` filter, money no rider ever held counted as
+      //      cash on the road.
+      // That is exactly why this card disagreed with the identical card under
+      // Finances. Migration 0033 computes it per rider as
+      // (collected − verified settlements); reusing it here means the two
+      // cards cannot drift apart again.
       int pendingSettlement = 0;
       try {
-        final unsettledRows = await _client
-            .from('payment_transactions')
-            .select('amount, payment_type')
-            .eq('vendor_id', vendorId)
-            .eq('status', 'active')
-            .eq('settled', false)
-            .inFilter('payment_type', ['full', 'partial', 'over', 'refund']);
-        pendingSettlement = (unsettledRows as List).fold<int>(0, (sum, row) {
-          final amount = (row['amount'] as num?)?.round() ?? 0;
-          return row['payment_type'] == 'refund' ? sum - amount : sum + amount;
-        });
-        if (pendingSettlement < 0) pendingSettlement = 0;
+        final kpis = await _client.rpc(
+          'get_vendor_finance_kpis',
+          params: {'p_vendor_id': vendorId},
+        );
+        if (kpis is Map) {
+          pendingSettlement = (kpis['awaiting_settlement'] as num?)?.round() ?? 0;
+        }
       } catch (e) {
-        AppLogger.warning('Failed to load pending settlement for vendor $vendorId', e);
+        AppLogger.warning('Failed to load unsettled rider cash for vendor $vendorId', e);
       }
 
       final productsRows = products as List;

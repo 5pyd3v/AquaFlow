@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/app_config.dart';
 import '../../../../core/constants/user_role.dart';
 import '../../../../core/routes/route_names.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -27,7 +28,11 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
   final _confirmController = TextEditingController();
   final _vendorIdController = TextEditingController();
   final _businessNameController = TextEditingController();
-  UserRole _selectedRole = UserRole.customer;
+
+  // Fixed per app build — see core/config/app_flavor.dart.
+  // No in-app role picker anymore: each build (customer/vendor/rider)
+  // only ever shows its own fields.
+  final UserRole _selectedRole = AppConfig.fixedRole;
   bool _obscure = true;
 
   @override
@@ -159,11 +164,9 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
                             ),
                       ),
                       const SizedBox(height: 28),
-                      _RoleSelector(
-                        selected: _selectedRole,
-                        onChanged: (r) => setState(() => _selectedRole = r),
-                      ),
-                      const SizedBox(height: 24),
+                      // Role selector removed: each app build is fixed to
+                      // one role via AppConfig.fixedRole, so there's
+                      // nothing for the user to choose here anymore.
                       AppTextField(
                         controller: _nameController,
                         label: 'Full Name',
@@ -278,79 +281,6 @@ class _EmailSignUpScreenState extends ConsumerState<EmailSignUpScreen> {
       ),
     );
   }
-}
-
-class _RoleSelector extends StatelessWidget {
-  final UserRole selected;
-  final ValueChanged<UserRole> onChanged;
-  const _RoleSelector({required this.selected, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: UserRole.selfServiceRoles.map((role) {
-        final isSelected = role == selected;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: role == UserRole.selfServiceRoles.first ? 0 : 4,
-              right: role == UserRole.selfServiceRoles.last ? 0 : 4,
-            ),
-            child: GestureDetector(
-              onTap: () => onChanged(role),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? _roleColor(role).withValues(alpha: 0.12)
-                      : AppColors.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isSelected
-                        ? _roleColor(role).withValues(alpha: 0.5)
-                        : AppColors.border,
-                    width: isSelected ? 1.5 : 1,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Icon(_roleIcon(role),
-                        color: isSelected ? _roleColor(role) : AppColors.textTertiary,
-                        size: 22),
-                    const SizedBox(height: 6),
-                    Text(
-                      role.label,
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        color: isSelected ? _roleColor(role) : AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Color _roleColor(UserRole r) => switch (r) {
-        UserRole.customer => AppColors.primary,
-        UserRole.vendor => AppColors.roleVendor,
-        UserRole.rider => AppColors.roleRider,
-        _ => AppColors.primary,
-      };
-
-  IconData _roleIcon(UserRole r) => switch (r) {
-        UserRole.customer => Icons.person_rounded,
-        UserRole.vendor => Icons.storefront_rounded,
-        UserRole.rider => Icons.two_wheeler_rounded,
-        _ => Icons.person_rounded,
-      };
 }
 
 class _AuthTopBar extends StatelessWidget {

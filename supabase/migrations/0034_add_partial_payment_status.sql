@@ -1,0 +1,47 @@
+-- ============================================================================
+-- AquaFlow — Add missing 'partial' payment_status enum value (Migration 0034)
+--
+-- BUG: `payment_status` was created in 0001 as
+--        enum ('pending', 'paid', 'failed', 'refunded')
+--      and no migration ever added 'partial'. But since migration 0026,
+--      collect_pending_payment has executed
+--        payment_status = case when v_outstanding_after = 0
+--                              then 'paid'::payment_status
+--                              else 'partial'::payment_status end
+--      which throws `invalid input value for enum payment_status: "partial"`
+--      the moment a collection leaves ANY outstanding balance. Migration
+--      0033 reused the same pattern for overpayment debt-reallocation.
+--
+-- SYMPTOMS (both are the same root cause):
+--   * "Collect pending payment" fails whenever the customer pays less than
+--     their full debt — broken since 0026, i.e. the module only ever worked
+--     when the payment happened to clear the balance exactly.
+--   * Paying extra to clear debt / earn credit fails whenever the excess
+--     only partially covers another order (0033 path).
+--
+-- FIX: add the value the code has always intended to use, rather than
+--      rewriting two long money-handling functions (which would risk a
+--      transcription error in exactly the code we least want to disturb).
+--
+-- Safety checks performed before choosing this route:
+--   * No CHECK constraint anywhere references payment_status.
+--   * Dart reads the column as a plain String
+--     (order_model.dart: `json['payment_status'] as String? ?? 'pending'`)
+--     and only ever special-cases 'refunded', so a new value flows through
+--     harmlessly and is strictly more informative than before.
+--   * The one Dart `switch` on a `payment_status` key reads the COMPUTED
+--     string from get_vendor_payment_overview ('fully_paid' /
+--     'partially_paid' / 'pending'), not this enum, and has a `_` default.
+--   * Nothing ORDER BYs this enum, but the value is inserted AFTER
+--     'pending' so a rebuilt-from-scratch database (which gets it from the
+--     `create type` in consolidated_schema/00_extensions_and_types.sql)
+--     has identical ordering to one patched by this migration.
+--
+-- Note: ALTER TYPE ... ADD VALUE is permitted inside a transaction block on
+-- PostgreSQL 12+ (Supabase is well past that) provided the new value is not
+-- USED in the same transaction. This migration only adds it; every use
+-- happens in later transactions at runtime, so it is safe as written. Do not
+-- append DML using 'partial' to this file.
+-- ============================================================================
+
+alter type public.payment_status add value if not exists 'partial' after 'pending';

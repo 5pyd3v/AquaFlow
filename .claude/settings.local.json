@@ -42,7 +42,10 @@
       "Bash(sed -n 425,446p __TRACKED_VAR__/supabase/consolidated_schema/01_tables.sql)",
       "Bash(cd \"C:\\\\Users\\\\spydev\\\\Desktop\\\\Water Management System\\\\aquaflow\" && mkdir -p supabase/consolidated_schema && cp \".claude/worktrees/agent-a95545f94de2fe217/supabase/consolidated_schema/\"*.sql \".claude/worktrees/agent-a95545f94de2fe217/supabase/consolidated_schema/\"*.md supabase/consolidated_schema/ && ls -la supabase/consolidated_schema/)",
       "Bash(git worktree *)",
-      "Bash(git branch *)"
+      "Bash(git branch *)",
+      "Bash(python \"C:/Users/spydev/AppData/Local/Temp/claude/C--Users-spydev-Desktop-Water-Management-System-aquaflow/cd283593-8f21-4a3a-be53-1d27c16451cf/scratchpad/verify_sync.py\")",
+      "Bash(flutter test *)",
+      "Bash(grep -o '\\\\$\\\\$' supabase/tests/02_finance_scenarios.sql)"
     ]
   }
 }

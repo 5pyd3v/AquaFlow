@@ -54,12 +54,19 @@ begin
   end if;
 end$$;
 
+-- payment_status — 'partial' added by migration 0034. It is placed second
+-- here so a from-scratch build has the same enum ordering as a live database
+-- that received it via `alter type ... add value ... after 'pending'`.
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'payment_status') then
-    create type public.payment_status as enum ('pending', 'paid', 'failed', 'refunded');
+    create type public.payment_status as enum ('pending', 'partial', 'paid', 'failed', 'refunded');
   end if;
 end$$;
+
+-- Databases whose type predates 0034 need the value added rather than the
+-- create above (which is skipped when the type already exists).
+alter type public.payment_status add value if not exists 'partial' after 'pending';
 
 do $$
 begin

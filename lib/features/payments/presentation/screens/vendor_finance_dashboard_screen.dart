@@ -80,7 +80,7 @@ class VendorFinanceDashboardScreen extends ConsumerWidget {
             Text('Cash held by riders', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
-              'Collected minus settled = cash still on the road.',
+              'Collected minus settled = unsettled cash still on the road.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textTertiary),
             ),
             const SizedBox(height: 12),
@@ -159,11 +159,12 @@ class _KpiGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = <_KpiSpec>[
-      _KpiSpec("Today's Collection", kpis.todaysCollection.toCurrency, Icons.today_rounded, AppColors.success),
+      _KpiSpec('Total Sales', kpis.totalSales.toCurrency, Icons.trending_up_rounded, AppColors.success),
+      _KpiSpec("Today's Sales", kpis.todaysCollection.toCurrency, Icons.today_rounded, AppColors.success),
       _KpiSpec('This Month', kpis.monthsCollection.toCurrency, Icons.calendar_month_rounded, AppColors.primary),
-      _KpiSpec('Pending Collection', kpis.pendingCollection.toCurrency, Icons.schedule_rounded, AppColors.warning),
-      _KpiSpec('Awaiting Settlement', kpis.awaitingSettlement.toCurrency, Icons.account_balance_wallet_rounded, const Color(0xFFE65100)),
-      _KpiSpec('Outstanding Customers', '${kpis.outstandingCustomers}', Icons.people_alt_rounded, AppColors.info),
+      _KpiSpec('Customer Debt', kpis.pendingCollection.toCurrency, Icons.schedule_rounded, AppColors.warning),
+      _KpiSpec('Unsettled (rider cash)', kpis.awaitingSettlement.toCurrency, Icons.account_balance_wallet_rounded, const Color(0xFFE65100)),
+      _KpiSpec('Customers in Debt', '${kpis.outstandingCustomers}', Icons.people_alt_rounded, AppColors.info),
       _KpiSpec('Credits Issued', kpis.creditsIssued.toCurrency, Icons.card_giftcard_rounded, const Color(0xFF7C3AED)),
       _KpiSpec('Partial Payments', '${kpis.partialCount}', Icons.pie_chart_rounded, const Color(0xFF0EA5E9)),
       _KpiSpec('Refunds', kpis.refunds.toCurrency, Icons.reply_rounded, AppColors.error),
@@ -254,7 +255,7 @@ class _RiderCashCard extends StatelessWidget {
                     color: const Color(0xFFE65100).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('${position.pendingSettlement.toCurrency} pending',
+                  child: Text('${position.pendingSettlement.toCurrency} pending verification',
                       style: const TextStyle(color: Color(0xFFE65100), fontSize: 11, fontWeight: FontWeight.w700)),
                 ),
             ],
@@ -264,7 +265,7 @@ class _RiderCashCard extends StatelessWidget {
             children: [
               _stat('Collected', position.collected.toCurrency, AppColors.info),
               _stat('Settled', position.settled.toCurrency, AppColors.success),
-              _stat('Pending', position.pendingSettlement.toCurrency, const Color(0xFFE65100)),
+              _stat('Unsettled', position.outstanding.toCurrency, const Color(0xFFE65100)),
             ],
           ),
         ],

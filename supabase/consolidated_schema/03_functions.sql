@@ -1213,8 +1213,18 @@ begin
 end;
 $$;
 
--- verify_cod_settlement — final version: 0024 (0015 -> 0024; also flips the
--- rider's covered unsettled payment_transactions to settled/tagged).
+-- verify_cod_settlement — final version: 0032 (0015 -> 0024 -> 0032).
+-- 0032 fix: previously flipped EVERY currently-unsettled payment_transaction
+-- to settled=true regardless of whether the verified amount actually
+-- covered them — a rider submitting a partial cash amount (the app's
+-- "Submit Cash" screen explicitly allows less than the full outstanding
+-- balance) would have their entire unsettled balance silently marked
+-- settled and mis-tagged against that one (smaller) settlement, corrupting
+-- the settlement-detail audit trail and hiding the uncovered remainder from
+-- every future settlement's snapshot. Now only flips the oldest
+-- transactions fully covered by the verified amount (whole-transaction
+-- units — a single row has no partially-settled state), leaving the rest
+-- correctly unsettled for the next settlement.
 create or replace function public.verify_cod_settlement(
   p_code text,
   p_vendor_id uuid
@@ -1222,6 +1232,7 @@ create or replace function public.verify_cod_settlement(
 returns json
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_settlement record;
@@ -1230,6 +1241,8 @@ declare
   v_outstanding_after numeric;
   v_txn_count int;
   v_order_count int;
+  v_remaining numeric;
+  v_txn record;
 begin
   select * into v_settlement
   from public.cod_settlements
@@ -1243,12 +1256,22 @@ begin
   from public.cod_settlements
   where rider_id = v_settlement.rider_id and vendor_id = p_vendor_id and status = 'pending';
 
-  -- Flip the rider's covered (unsettled) payments to settled, tag them
-  update public.payment_transactions
-    set settled = true, settlement_id = v_settlement.id, updated_at = now()
+  -- Only flip the oldest transactions the verified amount fully covers.
+  v_remaining := v_settlement.amount;
+  for v_txn in
+    select id, amount from public.payment_transactions
     where rider_id = v_settlement.rider_id and vendor_id = p_vendor_id
       and status = 'active' and settled = false
-      and payment_type in ('full','partial','over');
+      and payment_type in ('full', 'partial', 'over')
+    order by created_at asc
+    for update
+  loop
+    exit when v_remaining < v_txn.amount;
+    update public.payment_transactions
+      set settled = true, settlement_id = v_settlement.id, updated_at = now()
+      where id = v_txn.id;
+    v_remaining := v_remaining - v_txn.amount;
+  end loop;
 
   select count(*), count(distinct order_id) into v_txn_count, v_order_count
   from public.payment_transactions where settlement_id = v_settlement.id;
@@ -1281,10 +1304,14 @@ begin
 end;
 $$;
 
--- get_rider_cod_balance — final version: 0027 (0015 -> 0026 -> 0027).
--- Since 0027 made refunds purely additive (they no longer mutate the
+-- get_rider_cod_balance — final version: 0033 (0015 -> 0026 -> 0027 ->
+-- 0033). Since 0027 made refunds purely additive (they no longer mutate the
 -- original transaction's amount), 'refund' rows must be netted out here
--- explicitly to compute true collected cash.
+-- explicitly to compute true collected cash. 0033 fix: the legacy fallback
+-- fired whenever the transaction sum was <= 0, which now happens
+-- legitimately (a delivery collecting Rs. 0 writes a zero-amount row) and
+-- would then report phantom cash straight off the orders table — it now
+-- keys off the ABSENCE of transactions instead.
 create or replace function public.get_rider_cod_balance(
   p_rider_id uuid,
   p_vendor_id uuid
@@ -1292,6 +1319,7 @@ create or replace function public.get_rider_cod_balance(
 returns json
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_outstanding numeric := 0;
@@ -1322,8 +1350,14 @@ begin
     and status = 'active'
     and payment_type in ('full', 'partial', 'over', 'refund');
 
-  -- Fallback for legacy delivered COD orders if no payment transactions exist yet
-  if v_total_collected <= 0 then
+  -- Legacy fallback for pre-payment-transactions data. Must key off the
+  -- ABSENCE of transactions, not a <= 0 sum: a delivery that collected
+  -- nothing legitimately writes a zero-amount row, and the old condition
+  -- would then report phantom cash straight off the orders table.
+  if not exists (
+    select 1 from public.payment_transactions
+    where rider_id = p_rider_id and vendor_id = p_vendor_id and status = 'active'
+  ) then
     select coalesce(sum(coalesce(amount_paid, total_amount)), 0) into v_total_collected
     from public.orders
     where vendor_id = p_vendor_id
@@ -1433,9 +1467,21 @@ begin
 end;
 $$;
 
--- complete_delivery_with_payment (0024) — records payment + marks delivered
--- ATOMICALLY. Over-payment excess -> customer wallet credit. Only ever
--- defined once.
+-- complete_delivery_with_payment — final version: 0033 (0024 -> 0033).
+-- Records payment + marks delivered ATOMICALLY. 0033 fix: over-payment used
+-- to go straight to wallet credit even while the customer still owed money
+-- on other orders; it now FIFO-clears their other outstanding orders first
+-- and only the true leftover becomes credit.
+--
+-- Cash-integrity note: each rupee tendered is recorded by EXACTLY ONE
+-- payment_transactions row. Pre-0033 the primary row stored the whole
+-- tendered amount; adding reallocation rows on top of that would have
+-- double-counted the same cash in every collection total. The tender is
+-- therefore split across rows — primary row = applied to THIS order, one row
+-- per other order the excess cleared, one 'over' row = leftover credited to
+-- the wallet — so SUM(rows) == amount tendered. This also repairs
+-- `credits_issued`, which used to sum the whole tendered amount of every
+-- over-payment instead of just the credited excess.
 create or replace function public.complete_delivery_with_payment(
   p_order_id uuid,
   p_entered_otp text,
@@ -1447,6 +1493,7 @@ create or replace function public.complete_delivery_with_payment(
 returns json
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_order public.orders;
@@ -1454,11 +1501,19 @@ declare
   v_outstanding numeric;
   v_credit_before numeric;
   v_credit_after numeric;
-  v_applied numeric;      -- amount applied to this order's outstanding
-  v_excess numeric;       -- overpayment → wallet credit
+  v_applied numeric;          -- applied to THIS order
+  v_excess numeric;           -- tendered beyond this order's outstanding
+  v_remaining_excess numeric; -- excess still unallocated
+  v_debt_cleared numeric := 0;
   v_pay_type text;
   v_txn_id uuid;
   v_amount numeric := round(coalesce(p_amount, 0));
+  v_other record;
+  v_apply numeric;
+  v_other_before numeric;
+  v_other_after numeric;
+  v_other_txn_id uuid;
+  v_order_number text;
 begin
   -- Lock the order row to prevent double completion / races
   select o.* into v_order from public.orders o where o.id = p_order_id for update;
@@ -1491,30 +1546,9 @@ begin
   v_applied := least(v_amount, v_outstanding);
   v_excess := greatest(v_amount - v_outstanding, 0);
 
-  -- Wallet credit before/after (over-payment lands in wallet)
   select coalesce(balance, 0) into v_credit_before
   from public.wallets where profile_id = v_order.customer_profile_id;
   v_credit_before := coalesce(v_credit_before, 0);
-
-  if v_excess > 0 then
-    perform public.adjust_wallet_balance(
-      v_order.customer_profile_id, v_excess, 'credit', p_order_id, 'Overpayment credit'
-    );
-    v_credit_after := v_credit_before + v_excess;
-  else
-    v_credit_after := v_credit_before;
-  end if;
-
-  -- Classify the payment
-  if v_amount = 0 then
-    v_pay_type := 'partial';
-  elsif v_excess > 0 then
-    v_pay_type := 'over';
-  elsif v_applied >= v_outstanding then
-    v_pay_type := 'full';
-  else
-    v_pay_type := 'partial';
-  end if;
 
   -- Update the order: paid + delivered
   update public.orders
@@ -1531,18 +1565,100 @@ begin
     where id = p_order_id
     returning * into v_order;
 
+  v_order_number := v_order.order_number;
+
   update public.riders set total_deliveries = total_deliveries + 1 where id = v_order.rider_id;
 
-  -- Insert the payment transaction (snapshots)
+  -- Classify THIS order's payment. 'over' is no longer used here: genuine
+  -- excess gets its own dedicated row further down.
+  if v_amount = 0 then
+    v_pay_type := 'partial';
+  elsif v_applied >= v_outstanding then
+    v_pay_type := 'full';
+  else
+    v_pay_type := 'partial';
+  end if;
+
+  -- Primary transaction — records ONLY what this order absorbed.
   insert into public.payment_transactions (
     order_id, customer_profile_id, rider_id, vendor_id, amount,
     outstanding_before, outstanding_after, credit_before, credit_after,
     payment_type, notes, created_by
   ) values (
-    p_order_id, v_order.customer_profile_id, v_order.rider_id, v_order.vendor_id, v_amount,
-    v_outstanding, greatest(v_outstanding - v_applied, 0), v_credit_before, v_credit_after,
+    p_order_id, v_order.customer_profile_id, v_order.rider_id, v_order.vendor_id, v_applied,
+    v_outstanding, greatest(v_outstanding - v_applied, 0), v_credit_before, v_credit_before,
     v_pay_type, p_notes, auth.uid()
   ) returning id into v_txn_id;
+
+  -- Excess clears the customer's OTHER outstanding orders first (FIFO).
+  v_remaining_excess := v_excess;
+  if v_remaining_excess > 0 then
+    for v_other in
+      select * from public.orders
+      where customer_profile_id = v_order.customer_profile_id
+        and vendor_id = v_order.vendor_id
+        and id <> p_order_id
+        and status not in ('cancelled', 'rejected')
+        and coalesce(outstanding_amount, 0) > 0
+      order by created_at asc
+      for update
+    loop
+      exit when v_remaining_excess <= 0;
+
+      v_other_before := coalesce(v_other.outstanding_amount, 0);
+      v_apply := least(v_remaining_excess, v_other_before);
+      v_other_after := greatest(v_other_before - v_apply, 0);
+
+      update public.orders
+        set amount_paid = coalesce(amount_paid, 0) + v_apply,
+            outstanding_amount = v_other_after,
+            payment_status = case when v_other_after = 0 then 'paid'::payment_status else 'partial'::payment_status end,
+            updated_at = now()
+        where id = v_other.id;
+
+      insert into public.payment_transactions (
+        order_id, customer_profile_id, rider_id, vendor_id, amount,
+        outstanding_before, outstanding_after, credit_before, credit_after,
+        payment_type, notes, created_by
+      ) values (
+        v_other.id, v_order.customer_profile_id, v_order.rider_id, v_order.vendor_id, v_apply,
+        v_other_before, v_other_after, v_credit_before, v_credit_before,
+        'full',
+        'Overpayment from order #' || coalesce(v_order_number, '') || ' applied to outstanding balance',
+        auth.uid()
+      ) returning id into v_other_txn_id;
+
+      insert into public.payment_audit_logs (
+        payment_transaction_id, action, old_amount, new_amount, reason, performed_by
+      ) values (
+        v_other_txn_id, 'collect_pending', v_other_before, v_other_after,
+        'Debt cleared via overpayment reallocation', auth.uid()
+      );
+
+      v_debt_cleared := v_debt_cleared + v_apply;
+      v_remaining_excess := v_remaining_excess - v_apply;
+    end loop;
+  end if;
+
+  -- Only what survives every outstanding debt becomes wallet credit.
+  if v_remaining_excess > 0 then
+    perform public.adjust_wallet_balance(
+      v_order.customer_profile_id, v_remaining_excess, 'credit', p_order_id, 'Overpayment credit'
+    );
+    v_credit_after := v_credit_before + v_remaining_excess;
+
+    insert into public.payment_transactions (
+      order_id, customer_profile_id, rider_id, vendor_id, amount,
+      outstanding_before, outstanding_after, credit_before, credit_after,
+      payment_type, notes, created_by
+    ) values (
+      p_order_id, v_order.customer_profile_id, v_order.rider_id, v_order.vendor_id, v_remaining_excess,
+      0, 0, v_credit_before, v_credit_after,
+      'over', 'Overpayment credited to wallet', auth.uid()
+    );
+  else
+    v_credit_after := v_credit_before;
+  end if;
 
   -- Optional receipt
   if p_receipt_url is not null and length(trim(p_receipt_url)) > 0 then
@@ -1569,7 +1685,8 @@ begin
     'order_id', p_order_id,
     'amount', v_amount,
     'applied', v_applied,
-    'excess_credit', v_excess,
+    'debt_cleared', v_debt_cleared,
+    'excess_credit', greatest(v_remaining_excess, 0),
     'outstanding_after', greatest(v_outstanding - v_applied, 0),
     'credit_after', v_credit_after,
     'payment_type', v_pay_type
@@ -2084,37 +2201,62 @@ begin
 end;
 $$;
 
--- get_vendor_rider_cash_positions (0024) — per-rider cash reconciliation.
--- Only ever defined once.
+-- get_vendor_rider_cash_positions — final version: 0032 (0024 -> 0032).
+-- 0032 fix: `collected` now nets out 'refund' rows (parity with
+-- get_rider_cod_balance/get_vendor_finance_kpis, which had this fix since
+-- 0027/0028 while this function never did — the two vendor screens showing
+-- rider cash positions displayed different "collected" totals for the same
+-- rider whenever refunds existed). Also adds `outstanding` (collected -
+-- settled, floor 0) since `pending_settlement` (sum of unverified
+-- settlement codes) was being misused by the Dart client as if it were
+-- this figure.
 create or replace function public.get_vendor_rider_cash_positions(p_vendor_id uuid)
 returns json[]
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_caller uuid;
   v_results json[];
 begin
   select id into v_caller from public.vendors where id = p_vendor_id and profile_id = auth.uid();
-  if v_caller is null then raise exception 'Not authorized'; end if;
+  if v_caller is null then
+    raise exception 'Not authorized';
+  end if;
 
   select array_agg(row_to_json(x)) into v_results from (
     select
       r.id as rider_id,
       p.full_name as rider_name,
       coalesce((
-        select sum(t.amount) from public.payment_transactions t
-        where t.rider_id = r.id and t.vendor_id = p_vendor_id and t.status='active'
-          and t.payment_type in ('full','partial','over')
+        select sum(case when t.payment_type = 'refund' then -t.amount else t.amount end)
+        from public.payment_transactions t
+        where t.rider_id = r.id and t.vendor_id = p_vendor_id and t.status = 'active'
+          and t.payment_type in ('full', 'partial', 'over', 'refund')
       ), 0) as collected,
       coalesce((
         select sum(s.amount) from public.cod_settlements s
-        where s.rider_id = r.id and s.vendor_id = p_vendor_id and s.status='verified'
+        where s.rider_id = r.id and s.vendor_id = p_vendor_id and s.status = 'verified'
       ), 0) as settled,
       coalesce((
         select sum(s.amount) from public.cod_settlements s
-        where s.rider_id = r.id and s.vendor_id = p_vendor_id and s.status='pending'
-      ), 0) as pending_settlement
+        where s.rider_id = r.id and s.vendor_id = p_vendor_id and s.status = 'pending'
+      ), 0) as pending_settlement,
+      greatest(
+        coalesce((
+          select sum(case when t.payment_type = 'refund' then -t.amount else t.amount end)
+          from public.payment_transactions t
+          where t.rider_id = r.id and t.vendor_id = p_vendor_id and t.status = 'active'
+            and t.payment_type in ('full', 'partial', 'over', 'refund')
+        ), 0)
+        -
+        coalesce((
+          select sum(s.amount) from public.cod_settlements s
+          where s.rider_id = r.id and s.vendor_id = p_vendor_id and s.status = 'verified'
+        ), 0),
+        0
+      ) as outstanding
     from public.riders r
     join public.profiles p on p.id = r.profile_id
     where r.vendor_id = p_vendor_id
@@ -2124,19 +2266,34 @@ begin
 end;
 $$;
 
--- get_vendor_finance_kpis — final version: 0028 (0024 -> 0026 -> 0027 ->
--- 0028). Dashboard KPI aggregates; refunds netted out of every collection
--- total including awaiting_settlement (the 0028 fix).
+-- get_vendor_finance_kpis — final version: 0033 (0024 -> 0026 -> 0027 ->
+-- 0028 -> 0033). Dashboard KPI aggregates. 0033 fixes:
+--   * adds `total_sales` (lifetime net cash collected — sales are cash
+--     received, never order face value);
+--   * `refunds` was missing `status = 'active'`, so deleted refunds
+--     inflated it;
+--   * `credits_issued` now derives from each row's wallet delta
+--     (credit_after - credit_before) instead of summing the whole tendered
+--     amount of every over-payment — correct for pre- and post-0033 rows;
+--   * `awaiting_settlement` summed EVERY unsettled transaction with no
+--     rider filter (money never held by a rider counted as "cash on the
+--     road") and read the `settled` boolean, which since 0032 deliberately
+--     lags on partial settlements. It is now computed per rider as
+--     (collected - verified settlements) floored at zero, making it
+--     rider-held cash only and tying it exactly to the sum of
+--     get_vendor_rider_cash_positions.outstanding.
 create or replace function public.get_vendor_finance_kpis(p_vendor_id uuid)
 returns json
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_today_start timestamptz := date_trunc('day', now());
   v_month_start timestamptz := date_trunc('month', now());
   v_todays_collection numeric;
   v_months_collection numeric;
+  v_total_sales numeric;
   v_pending_collection numeric;
   v_outstanding_customers int;
   v_credits_issued numeric;
@@ -2166,43 +2323,67 @@ begin
     and payment_type in ('full', 'partial', 'over', 'refund')
     and created_at >= v_month_start;
 
+  -- Lifetime sales = every rupee actually collected, net of refunds.
+  select coalesce(sum(case when payment_type = 'refund' then -amount else amount end), 0)
+  into v_total_sales
+  from public.payment_transactions
+  where vendor_id = p_vendor_id and status = 'active'
+    and payment_type in ('full', 'partial', 'over', 'refund');
+
   select coalesce(sum(outstanding_amount), 0) into v_pending_collection
   from public.orders where vendor_id = p_vendor_id and status not in ('cancelled', 'rejected');
 
   select count(distinct customer_profile_id) into v_outstanding_customers
   from public.orders where vendor_id = p_vendor_id and outstanding_amount > 0 and status not in ('cancelled', 'rejected');
 
-  select coalesce(sum(amount), 0) into v_credits_issued
+  -- Credit actually issued = the wallet delta each row recorded, not the
+  -- whole tendered amount of an over-payment (the pre-0033 bug).
+  select coalesce(sum(greatest(coalesce(credit_after, 0) - coalesce(credit_before, 0), 0)), 0)
+  into v_credits_issued
   from public.payment_transactions
-  where vendor_id = p_vendor_id and status = 'active' and payment_type = 'over';
+  where vendor_id = p_vendor_id and status = 'active';
 
   select coalesce(sum(amount), 0) into v_refunds
   from public.payment_transactions
-  where vendor_id = p_vendor_id and payment_type = 'refund';
+  where vendor_id = p_vendor_id and status = 'active' and payment_type = 'refund';
 
   select count(*) into v_partial_count
   from public.payment_transactions
   where vendor_id = p_vendor_id and status = 'active' and payment_type = 'partial';
 
-  -- refund rows are always settled = false (verify_cod_settlement only ever
-  -- flips 'full'/'partial'/'over' rows to settled), so they must be
-  -- subtracted here explicitly or refunded cash keeps showing as "awaiting
-  -- settlement" forever.
-  select coalesce(sum(case when payment_type = 'refund' then -amount else amount end), 0)
+  -- Cash still physically held by RIDERS: per rider, everything they
+  -- collected (net of refunds) minus everything the vendor has verified
+  -- receiving from them. Floored per rider so one rider's over-settlement
+  -- can't mask another's shortfall. Ties exactly to the sum of
+  -- get_vendor_rider_cash_positions.outstanding.
+  select coalesce(sum(greatest(q.collected - q.settled, 0)), 0)
   into v_awaiting_settlement
-  from public.payment_transactions
-  where vendor_id = p_vendor_id and status = 'active' and settled = false
-    and payment_type in ('full', 'partial', 'over', 'refund');
+  from (
+    select
+      coalesce((
+        select sum(case when t.payment_type = 'refund' then -t.amount else t.amount end)
+        from public.payment_transactions t
+        where t.rider_id = r.id and t.vendor_id = p_vendor_id and t.status = 'active'
+          and t.payment_type in ('full', 'partial', 'over', 'refund')
+      ), 0) as collected,
+      coalesce((
+        select sum(s.amount) from public.cod_settlements s
+        where s.rider_id = r.id and s.vendor_id = p_vendor_id and s.status = 'verified'
+      ), 0) as settled
+    from public.riders r
+    where r.vendor_id = p_vendor_id
+  ) q;
 
   return json_build_object(
     'todays_collection', greatest(v_todays_collection, 0),
     'months_collection', greatest(v_months_collection, 0),
+    'total_sales', greatest(v_total_sales, 0),
     'pending_collection', v_pending_collection,
     'outstanding_customers', v_outstanding_customers,
     'credits_issued', v_credits_issued,
     'refunds', v_refunds,
     'partial_count', v_partial_count,
-    'awaiting_settlement', greatest(v_awaiting_settlement, 0)
+    'awaiting_settlement', v_awaiting_settlement
   );
 end;
 $$;

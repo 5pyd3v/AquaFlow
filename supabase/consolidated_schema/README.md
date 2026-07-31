@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-23, refreshed 2026-07-31
 **Source:** mechanical extraction from `supabase/migrations/0001` through
-`0031` (31 files, ~7,230 lines), all committed to `main`.
+`0034` (34 files, ~8,050 lines), all committed to `main`.
 
 ## What this is
 
@@ -96,17 +96,19 @@ in 0017 and never recreated — omitted from `06_storage_and_realtime.sql`.
 | `create_email_user` | 0018, 0019, 0030 | 0030 |
 | `process_refund` | 0025, 0026, 0027 | 0027 |
 | `resolve_payment_amendment` | 0024, 0025, 0026, 0027, 0029 | 0029 |
-| `get_rider_cod_balance` | 0015, 0026, 0027 | 0027 |
+| `get_rider_cod_balance` | 0015, 0026, 0027, 0033 | 0033 |
 | `get_customer_ledger` | 0024, 0026, 0027 | 0027 |
-| `get_vendor_finance_kpis` | 0024, 0026, 0027, 0028 | 0028 |
+| `get_vendor_finance_kpis` | 0024, 0026, 0027, 0028, 0033 | 0033 |
+| `complete_delivery_with_payment` | 0024, 0033 | 0033 |
 | `edit_payment` | 0024, 0027 | 0027 |
 | `delete_payment` | 0024, 0027 | 0027 |
 | `collect_pending_payment` | 0026, 0027 | 0027 |
+| `get_vendor_rider_cash_positions` | 0024, 0032 | 0032 |
 | `get_customer_total_outstanding` | 0025, 0027 | 0027 |
-| `verify_cod_settlement` | 0015, 0024 | 0024 |
+| `verify_cod_settlement` | 0015, 0024, 0032 | 0032 |
 | `generate_cod_settlement` | 0015, 0024 | 0024 |
 
-Every other function (35 of the 51) was defined exactly once. `03_functions.sql`
+Every other function (33 of the 52) was defined exactly once. `03_functions.sql`
 carries an inline comment on every function noting its version history.
 
 ## Superseded / inline-modified RLS policies (used the LAST definition)
@@ -215,8 +217,39 @@ three later migrations:
   `reset_customer_pin(uuid, uuid, text)` added to `03_functions.sql` (under
   "VENDOR CUSTOMERS") plus its `grant execute` in `07_grants.sql`. Lets a
   vendor regenerate the login PIN for one of their own customers.
+- **`0032_fix_rider_cash_reconciliation.sql`** — `get_vendor_rider_cash_positions`
+  and `verify_cod_settlement` in `03_functions.sql` updated to their 0032
+  bodies. The former now nets refunds out of `collected` (it never had the
+  refund-netting fix `get_rider_cod_balance`/`get_vendor_finance_kpis`
+  received in 0027/0028, so the vendor's two rider-cash-position screens
+  showed different numbers for the same rider) and adds an `outstanding`
+  field. The latter now only marks the oldest fully-covered transactions
+  settled instead of blindly flipping every unsettled transaction on any
+  partial cash settlement. Both signatures are unchanged, so `07_grants.sql`
+  needed no update.
 
-No table, index, trigger, RLS policy, storage, or type changes were
-introduced by 0029-0031 beyond what's listed above (verified by grepping
-each migration for `alter table` / `create policy` / `create index` /
+- **`0033_finance_accounting_correctness.sql`** — `complete_delivery_with_payment`,
+  `get_vendor_finance_kpis` and `get_rider_cod_balance` updated to their
+  0033 bodies. Establishes one accounting model across the finance section:
+  sales are cash actually collected (never order face value), unsettled is
+  rider-held cash only, and an overpayment clears the customer's other debt
+  before any of it becomes wallet credit. Adds the `total_sales` key to the
+  KPI payload. All three signatures are unchanged, so `07_grants.sql` needed
+  no update. See `supabase/tests/` for the invariant, scenario and unit
+  tests covering it.
+
+- **`0034_add_partial_payment_status.sql`** — adds the missing `'partial'`
+  value to the `payment_status` enum in `00_extensions_and_types.sql`.
+  `collect_pending_payment` has written `'partial'::payment_status` since
+  migration 0026 and 0033 reused the pattern, but no migration ever added
+  the value — so any collection or overpayment that left a balance failed
+  with `invalid input value for enum payment_status: "partial"`. The value
+  is inserted **after `'pending'`** in both the `create type` (fresh builds)
+  and via `alter type ... add value ... after 'pending'` (existing
+  databases) so enum ordering is identical either way.
+
+Aside from the `payment_status` enum value added by 0034, no table, index,
+trigger, RLS policy, storage, or type changes were introduced by 0029-0034
+beyond what's listed above (verified by grepping each migration for
+`alter table` / `alter type` / `create policy` / `create index` /
 `create trigger` / `create type`).
