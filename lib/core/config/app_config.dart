@@ -63,7 +63,7 @@ class AppConfig {
   //   flutter run --dart-define=FLAVOR=vendor
   //   flutter run --dart-define=FLAVOR=rider
   static const String _flavorString =
-      String.fromEnvironment('FLAVOR', defaultValue: 'customer');
+      String.fromEnvironment('FLAVOR', defaultValue: 'vendor');
 
   static UserRole get fixedRole {
     switch (_flavorString) {

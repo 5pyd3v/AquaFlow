@@ -45,7 +45,14 @@
       "Bash(git branch *)",
       "Bash(python \"C:/Users/spydev/AppData/Local/Temp/claude/C--Users-spydev-Desktop-Water-Management-System-aquaflow/cd283593-8f21-4a3a-be53-1d27c16451cf/scratchpad/verify_sync.py\")",
       "Bash(flutter test *)",
-      "Bash(grep -o '\\\\$\\\\$' supabase/tests/02_finance_scenarios.sql)"
+      "Bash(grep -o '\\\\$\\\\$' supabase/tests/02_finance_scenarios.sql)",
+      "Bash(awk '{print $6, $7, $NF}')",
+      "Bash(python extract.py)",
+      "Bash(python functions_check.py)",
+      "Bash(python ddl_check.py)",
+      "Bash(python storage_realtime.py)",
+      "Bash(cd \"/c/Users/spydev/Desktop/Water Management System/aquaflow\" && echo \"=== tables with RLS enabled in migrations ===\" && grep -rhoE \"alter table public\\\\.\\\\w+ enable row level security\" supabase/migrations/*.sql | sort -u | sed -E 's/alter table public\\\\.\\(\\\\w+\\).*/\\\\1/' > /tmp/mig_rls_enabled.txt && cat /tmp/mig_rls_enabled.txt | wc -l && echo \"=== tables with RLS enabled in consolidated ===\" && grep -hoE \"alter table public\\\\.\\\\w+ enable row level security\" supabase/consolidated_schema/*.sql | sed -E 's/alter table public\\\\.\\(\\\\w+\\).*/\\\\1/' | sort -u > /tmp/con_rls_enabled.txt && cat /tmp/con_rls_enabled.txt | wc -l && echo \"=== diff \\(should be empty or only dropped tables\\) ===\" && diff /tmp/mig_rls_enabled.txt /tmp/con_rls_enabled.txt)",
+      "Bash(rm -f /tmp/mig_rls_enabled.txt /tmp/con_rls_enabled.txt)"
     ]
   }
 }

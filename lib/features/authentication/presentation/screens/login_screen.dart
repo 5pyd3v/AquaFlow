@@ -69,25 +69,7 @@ class LoginScreen extends ConsumerWidget {
                           compact: isShort,
                           onTap: () => context.pushNamed(RouteNames.emailSignIn),
                         ),
-                        SizedBox(height: isShort ? 8 : 14),
-                        _SignInMethod(
-                          icon: Icons.g_mobiledata_rounded,
-                          label: 'Continue with Google',
-                          subtitle: 'One tap sign-in',
-                          isLoading: authState.isLoading,
-                          compact: isShort,
-                          onTap: () async {
-                            final result = await ref
-                                .read(authControllerProvider.notifier)
-                                .signInWithGoogle();
-                            if (!context.mounted) return;
-                            result.fold((_) {}, (profile) {
-                              if (!profile.isVerified) {
-                                context.goNamed(RouteNames.completeProfile);
-                              }
-                            });
-                          },
-                        ),
+                        
                         if (!isShort) ...[
                           const SizedBox(height: 28),
                           const _RolePreviewStrip(),

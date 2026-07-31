@@ -133,6 +133,12 @@ flutter run -d chrome
 
 ---
 
+## To build apps for role based access
+flutter build apk --dart-define=FLAVOR=customer
+flutter build apk --dart-define=FLAVOR=vendor
+flutter build apk --dart-define=FLAVOR=rider
+
+
 ## 🗄️ Backend
 
 Supabase powers:
