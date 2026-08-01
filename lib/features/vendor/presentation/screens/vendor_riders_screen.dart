@@ -22,19 +22,6 @@ class VendorRidersScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('My Riders')),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: AppShadows.brand(color: AppColors.roleVendor, opacity: 0.35),
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () => _showLinkRiderDialog(context, ref),
-          icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const Text('Link Rider'),
-          backgroundColor: AppColors.roleVendor,
-          elevation: 0,
-        ),
-      ),
       body: ridersAsync.when(
         loading: () => ListView.builder(
           padding: const EdgeInsets.all(20),
