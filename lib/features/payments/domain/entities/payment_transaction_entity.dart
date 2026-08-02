@@ -64,6 +64,14 @@ class PaymentTransactionEntity extends Equatable {
   /// amendment request.
   bool get isEditable => status == PaymentTxnStatus.active && !settled;
 
+  /// Whether a "Refund" action may be offered for this row. A refund is
+  /// never settled (verify_cod_settlement only ever flips 'full'/'partial'/
+  /// 'over' rows), so an unsettled refund row would otherwise pass
+  /// [isEditable] and show its own refund button — refunding a refund is
+  /// meaningless and rejected server-side by process_refund (migration
+  /// 0035), so it must not be offered here either.
+  bool get isRefundable => isEditable && type != PaymentType.refund;
+
   @override
   List<Object?> get props => [
         id,

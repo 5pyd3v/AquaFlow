@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-23, refreshed 2026-07-31
 **Source:** mechanical extraction from `supabase/migrations/0001` through
-`0034` (34 files, ~8,050 lines), all committed to `main`.
+`0035` (35 files, ~8,300 lines), all committed to `main`.
 
 ## What this is
 
@@ -94,7 +94,7 @@ in 0017 and never recreated — omitted from `06_storage_and_realtime.sql`.
 | `get_vendor_customers` | 0022, 0023, 0025, 0027 | 0027 |
 | `create_pin_customer` | 0018, 0019, 0030 | 0030 |
 | `create_email_user` | 0018, 0019, 0030 | 0030 |
-| `process_refund` | 0025, 0026, 0027 | 0027 |
+| `process_refund` | 0025, 0026, 0027, 0035 | 0035 |
 | `resolve_payment_amendment` | 0024, 0025, 0026, 0027, 0029 | 0029 |
 | `get_rider_cod_balance` | 0015, 0026, 0027, 0033 | 0033 |
 | `get_customer_ledger` | 0024, 0026, 0027 | 0027 |
@@ -247,9 +247,20 @@ three later migrations:
   is inserted **after `'pending'`** in both the `create type` (fresh builds)
   and via `alter type ... add value ... after 'pending'` (existing
   databases) so enum ordering is identical either way.
+- **`0035_reject_refund_of_refund.sql`** — `process_refund` in
+  `03_functions.sql` now rejects any attempt to refund a transaction whose
+  `payment_type` is already `'refund'`. A refund row is active+unsettled
+  just like a normal payment (refunds are never settled), so it previously
+  passed every existing guard — reachable from the app, since
+  `rider_order_detail_screen.dart`'s refund button was gated only on
+  `isEditable` (active + unsettled), which a refund row also satisfies.
+  Fixed at both layers: this server-side guard, and the Dart client's new
+  `PaymentTransactionEntity.isRefundable` getter (`isEditable && type !=
+  refund`), which the UI now gates on instead. Signature unchanged, so
+  `07_grants.sql` needed no update.
 
 Aside from the `payment_status` enum value added by 0034, no table, index,
-trigger, RLS policy, storage, or type changes were introduced by 0029-0034
+trigger, RLS policy, storage, or type changes were introduced by 0029-0035
 beyond what's listed above (verified by grepping each migration for
 `alter table` / `alter type` / `create policy` / `create index` /
 `create trigger` / `create type`).

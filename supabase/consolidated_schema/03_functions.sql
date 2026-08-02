@@ -2411,6 +2411,13 @@ $$;
 -- `amount` is never mutated; a new 'refund' row links back to it via
 -- refunds_transaction_id. FIFO-reallocates the refund to clear any other
 -- outstanding debt for the same customer/vendor before returning the rest.
+-- process_refund — final version: 0035 (0025 -> 0026 -> 0027 -> 0035). 0035
+-- fix: adds a guard rejecting refund-of-a-refund. Previously nothing
+-- checked payment_type, so an unsettled refund row (refunds are never
+-- settled) passed every existing guard and could itself be "refunded" —
+-- reachable from rider_order_detail_screen.dart, whose refund button was
+-- gated only on isEditable (active + unsettled), which a refund row also
+-- satisfies. See PaymentTransactionEntity.isRefundable on the Dart side.
 create or replace function public.process_refund(
   p_transaction_id uuid,
   p_amount numeric,
@@ -2419,6 +2426,7 @@ create or replace function public.process_refund(
 returns json
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare
   v_txn public.payment_transactions;
@@ -2450,6 +2458,9 @@ begin
   select * into v_txn from public.payment_transactions where id = p_transaction_id for update;
   if v_txn.id is null then raise exception 'Payment not found'; end if;
   if v_txn.status <> 'active' then raise exception 'Only active payments can be refunded'; end if;
+  if v_txn.payment_type = 'refund' then
+    raise exception 'A refund cannot itself be refunded';
+  end if;
 
   select profile_id into v_rider_profile_id from public.riders where id = v_txn.rider_id;
   if v_rider_profile_id is distinct from auth.uid() then

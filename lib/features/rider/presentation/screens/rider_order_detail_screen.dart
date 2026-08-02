@@ -64,7 +64,7 @@ class RiderOrderDetailScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(bottom: 8),
                           child: _PaymentTile(
                             payment: p,
-                            onRefund: p.isEditable
+                            onRefund: p.isRefundable
                                 ? () => _navigateToRefund(context, p)
                                 : null,
                           ),

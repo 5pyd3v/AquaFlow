@@ -52,7 +52,9 @@
       "Bash(python ddl_check.py)",
       "Bash(python storage_realtime.py)",
       "Bash(cd \"/c/Users/spydev/Desktop/Water Management System/aquaflow\" && echo \"=== tables with RLS enabled in migrations ===\" && grep -rhoE \"alter table public\\\\.\\\\w+ enable row level security\" supabase/migrations/*.sql | sort -u | sed -E 's/alter table public\\\\.\\(\\\\w+\\).*/\\\\1/' > /tmp/mig_rls_enabled.txt && cat /tmp/mig_rls_enabled.txt | wc -l && echo \"=== tables with RLS enabled in consolidated ===\" && grep -hoE \"alter table public\\\\.\\\\w+ enable row level security\" supabase/consolidated_schema/*.sql | sed -E 's/alter table public\\\\.\\(\\\\w+\\).*/\\\\1/' | sort -u > /tmp/con_rls_enabled.txt && cat /tmp/con_rls_enabled.txt | wc -l && echo \"=== diff \\(should be empty or only dropped tables\\) ===\" && diff /tmp/mig_rls_enabled.txt /tmp/con_rls_enabled.txt)",
-      "Bash(rm -f /tmp/mig_rls_enabled.txt /tmp/con_rls_enabled.txt)"
+      "Bash(rm -f /tmp/mig_rls_enabled.txt /tmp/con_rls_enabled.txt)",
+      "Bash(grep -o '\\\\$\\\\$' supabase/migrations/0035_reject_refund_of_refund.sql)",
+      "Bash(grep -o '\\\\$\\\\$' supabase/consolidated_schema/03_functions.sql)"
     ]
   }
 }

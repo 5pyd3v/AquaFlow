@@ -77,6 +77,7 @@ and names the scenario.
 | S8 | `total_sales` == summed cash, net of refunds |
 | S9 | A **partial** pending-payment collection succeeds (regression, 0034) |
 | S10 | Overpayment whose excess only **partly** covers other debt (regression, 0034) |
+| S11 | A refund cannot itself be refunded (regression, 0035) |
 
 S1, S4, S5 and S10 additionally assert **cash conservation** — that the
 transaction rows sum to exactly what was tendered, catching any future
@@ -101,9 +102,14 @@ the bugs live.
 ## 3. Client unit tests
 
 ```bash
-flutter test test/features/payments/finance_accounting_test.dart
+flutter test test/features/payments/
 ```
 
-Covers the Dart half: KPI/cash-position parsing, rounding, the
-`sales + debt == order value` relationship, the KPI-to-rider-card tie-out,
-and graceful defaulting if the backend has not been migrated yet.
+- `finance_accounting_test.dart` — KPI/cash-position parsing, rounding, the
+  `sales + debt == order value` relationship, the KPI-to-rider-card tie-out,
+  and graceful defaulting if the backend has not been migrated yet.
+- `payment_transaction_entity_test.dart` — `isEditable` vs `isRefundable`
+  (regression, 0035): a refund row is active+unsettled just like a normal
+  payment, so `isEditable` alone lets its own "Refund" button render.
+  `isRefundable` additionally excludes `type == refund` and is what the UI
+  must gate on.

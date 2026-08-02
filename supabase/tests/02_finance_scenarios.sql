@@ -36,6 +36,7 @@ declare
   v_o4 uuid;            -- S5: true excess -> credit
   v_o5 uuid;            -- S9: partial pending collection
   v_o6_old uuid; v_o6_new uuid; -- S10: excess partially covers other debt
+  v_o7 uuid;            -- S11: refund-of-a-refund must be rejected
 
   v_res json;
   v_bal json;
@@ -44,6 +45,7 @@ declare
   v_num2 numeric;
   v_status text;
   v_code text;
+  v_refund_id uuid;
   v_awaiting_before numeric;
   v_awaiting_after numeric;
 
@@ -362,6 +364,36 @@ begin
   if v_num <> 800 then
     raise exception 'S10: cash conservation broken — rows sum to %, tendered 800', v_num;
   end if;
+
+  -- ==================================================================
+  -- S11 — REGRESSION (migration 0035): a refund must not itself be
+  --       refundable. Before 0035, process_refund had no check on
+  --       payment_type, so a rider tapping "Refund" on their own refund
+  --       record (reachable in the UI because isEditable didn't exclude
+  --       type == refund either — see rider_order_detail_screen.dart)
+  --       would sail through every guard (active, same rider, unsettled)
+  --       and create a refund-of-a-refund.
+  -- ==================================================================
+  insert into public.orders (order_number, customer_profile_id, vendor_id, rider_id, address_id,
+                             status, total_amount, outstanding_amount, payment_method, rider_otp)
+  values ('FIN-TEST-S11', v_c1_profile, v_vendor, v_r1, v_addr1, 'assigned', 1000, 1000, 'cod', '777777')
+  returning id into v_o7;
+
+  perform set_config('request.jwt.claim.sub', v_r1_profile::text, true);
+  v_res := public.complete_delivery_with_payment(v_o7, '777777', 1000);
+
+  v_res := public.process_refund((v_res->>'transaction_id')::uuid, 400, 'customer returned goods');
+  v_refund_id := (v_res->>'refund_transaction_id')::uuid;
+
+  begin
+    perform public.process_refund(v_refund_id, 100, 'attempting to refund a refund');
+    raise exception 'S11: expected process_refund to reject a refund-of-a-refund, but it succeeded';
+  exception
+    when others then
+      if sqlerrm <> 'A refund cannot itself be refunded' then
+        raise exception 'S11: wrong rejection — expected ''A refund cannot itself be refunded'', got: %', sqlerrm;
+      end if;
+  end;
 
   raise notice 'ALL FINANCE SCENARIOS PASSED';
 end;
